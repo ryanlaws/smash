@@ -1,0 +1,2 @@
+# SMASH
+sequencer for apes 🍌
