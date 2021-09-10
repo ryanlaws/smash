@@ -12,13 +12,6 @@ tabutil = require('tabutil')
 engine.name = "StereoLpg"
 
 -- TODO
--- - - 
--- - sequencer w/ tempo adj
--- - - k3 = toggle play/rec
--- - - switch to rec, wait for first tap
--- - - (if nothing rec, leave seq alone = doubles as stop btn)
--- - - switch to play, immediately start playback
--- - params
 -- - config knob behaviors
 -- - graphix... 
 -- - - on strike... something indicating sharpness
@@ -57,14 +50,57 @@ function init()
   lettuce = lattice:new()
   spokes = lettuce:new_pattern{
     action = play_next_event,
-    division = 1/48,
+    division = 1/seq_speed,
     enabled = true
   }
   lettuce:start()
 
   set_seq_speed(seq_speed)
+
+  init_params()
   
-  print(norns.state.script)
+  -- print(norns.state.script)
+end
+
+function init_params()
+  params:add_group("SMASH",6)
+
+  -- (id, name, controlspec, formatter)
+  params:add_control("smash_reso","resonance",
+  -- (minval, maxval, warp, step, default, units, quantum, wrap)
+    controlspec.new(0,1,'lin',0.05,0.2,'pewpew',0.05/1))
+  params:set_action("smash_reso",function(ouchie_wawa)
+    engine.resonance(ouchie_wawa)
+  end)
+
+  params:add_control("smash_gain","gain",
+    controlspec.new(0.2,20,'exp',0.05,1,'OUCH',1/50))
+  params:set_action("smash_gain",function(huge_gains_bro)
+    engine.gain(huge_gains_bro)
+  end)
+
+  params:add_control("smash_noise","noise",
+    controlspec.new(0,1,'exp',0.001,0.001,'kiss',1/100))
+  params:set_action("smash_noise",function(hz)
+    engine.noise(hz)
+  end)
+
+  params:add_control("smash_leak","leak",
+    controlspec.new(0,1,'exp',0.001,0.001,'drips',1/100))
+  params:set_action("smash_leak",function(hz)
+    engine.leak(hz)
+  end)
+
+  params:add_option("smash_hum","hum",{"50Hz","60Hz"},1)
+  params:set_action("smash_hum",function(i)
+    engine.hum(({50,60})[i])
+  end)
+
+  params:add_option("smash_side","ears",{"left","both","right"},2)
+  params:set_action("smash_side",function(i)
+    print ("side "..i)
+    engine.side(i - 2)
+  end)
 end
 
 function handle_play_tick()

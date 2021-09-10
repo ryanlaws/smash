@@ -7,20 +7,13 @@ Engine_StereoLpg : CroneEngine {
 
   alloc {
     /* TODO
-      * [x] gain + tanh (pre/post/both?)
-      * [x] line noise + volume
-      * [x] hum : 50Hz/60Hz, volume, detune (level + det)
-      * [x]   - maybe hum has diff levels in and out of LPG
-      * [x]   - maybe env influences hum too, or at least leak
-      * [x]   - definitely needs some interaction w/ leak
-      * [x] leak (signal and noise) - "always on"
       * [ ] delay (influenced by strike times) - tiny buffer like a BBD
       * [ ] configurable min/max cutoff
       * [ ] configurable min/max decay
       * [ ] slews
     */
     synth = { | t_strike=0, sharpness=1, side=0,
-      leak=0.001, noise=0.001, hum=60, gain=1.05, resonance=0.1 |
+      leak=0.001, noise=0.001, hum=50, gain=1.05, resonance=0.1 |
       var ears = SoundIn.ar([0, 1]);
       var sides = [
         ears[[0,0]],
@@ -53,7 +46,10 @@ Engine_StereoLpg : CroneEngine {
     this.addCommand("side","f",{|msg|synth.set(\side,msg[1])});
     this.addCommand("leak","f",{|msg|synth.set(\leak,msg[1])});
     this.addCommand("noise","f",{|msg|synth.set(\noise,msg[1])});
-    this.addCommand("hum","f",{|msg|synth.set(\hum,msg[1])});
+    this.addCommand("hum","f",{|msg|
+      msg.postln;
+      synth.set(\hum,msg[1])
+    });
     this.addCommand("gain","f",{|msg|synth.set(\gain,msg[1])});
     this.addCommand("resonance","f",{|msg|synth.set(\resonance,msg[1])});
   }
