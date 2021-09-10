@@ -1,3 +1,16 @@
+--    * **  S  M  A  S  H  ** * 
+--     stereo LPG + sequencer
+--  fun for primates of all ages
+--
+-- K2 = SMASH ..........................................  
+-- ................................ K3 = arm/play
+-- E2 = sharpness ..............................
+-- ....................................... E3 = tempo
+
+lattice = require('lattice')
+tabutil = require('tabutil')
+engine.name = "StereoLpg"
+
 -- TODO
 -- - - 
 -- - sequencer w/ tempo adj
@@ -11,9 +24,6 @@
 -- - - on strike... something indicating sharpness
 -- - - on strike... something indicating sharpness
 -- - - 
-lattice = require('lattice')
-tabutil = require('tabutil')
-engine.name = "StereoLpg"
 
 armed = false
 recording = false
@@ -38,7 +48,6 @@ end
 function set_seq_speed(new_speed)
   spokes.division = 1/new_speed
 end
-
 
 function init()
   -- Just Clock Things
@@ -83,12 +92,19 @@ function disarm_recording()
 end
 
 function start_recording()
-  -- clear events
   -- reset counters
   tick_pos = 0
   tick_length = 0
   event_pos = 1
+
+  -- clear events
   events = {}
+
+  -- set clock to medium position 
+  -- I'm not super set on this
+  -- seems reasonable atm tho
+  -- SPEED IT UP SLOW IT DOWN
+  seq_speed = 48
 
   armed = false
   recording = true
@@ -126,6 +142,7 @@ function enc(e, d)
     print (sharpness)
   elseif e == 3 then
     seq_speed = math.min(math.max(seq_speed + d, 12), 96)
+    set_seq_speed(seq_speed)
   end
 end
 
