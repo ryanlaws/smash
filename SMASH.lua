@@ -9,14 +9,36 @@
 
 lattice = require('lattice')
 tabutil = require('tabutil')
+gfx = require('SMASH/lib/gfx') -- always require() - easy to move later
 engine.name = "StereoLpg"
 
+-- so require() can load stuff from dust
+-- i.e. require('SMASH/lib/gfx')
+-- I kinda like this, maybe I wanna use this
+
 -- TODO
--- - config knob behaviors
+-- PRIORITY
 -- - graphix... 
--- - - on strike... something indicating sharpness
--- - - on strike... something indicating sharpness
--- - - 
+-- - params
+-- - - fix formatters
+-- - - - JUST LOOKIT norns formatter api-docs/code
+-- - - fix resonance (liiittle too loud)
+-- - - - should baaarely self-osc (0.925) at max
+-- - - add tempo (should just be, like, 20-300 BPM or w/e)
+-- - synth
+-- - - slew noise
+-- - - slew gain
+-- - - slew reso
+-- - - bring min freq down a bit
+-- - - bring max decay up a bit
+-- - - bring min decay down a bit
+-- - etc.
+-- - - refactor clock to use ACTUAL BPM
+-- - - move seq stuff to own module
+-- NOT PRIORITY
+-- - config knob behaviors
+-- - - what does this even mean? like assign E2/E3?
+-- - do that rhythm trigger thing wm wanted I guess
 
 armed = false
 recording = false
@@ -25,6 +47,10 @@ seq_speed = 48
 events = {}
 
 function noop() end
+
+function identity(x) return x  end
+
+function poop(x) return 'poop' end
 
 function rerun()
   norns.script.load(norns.state.script)
@@ -40,6 +66,15 @@ end
 
 function set_seq_speed(new_speed)
   spokes.division = 1/new_speed
+end
+
+function init_gfx()
+  clock.run(function()
+    while true do
+      clock.sleep(1/15)
+      redraw()
+    end
+  end)
 end
 
 function init()
@@ -58,6 +93,7 @@ function init()
   set_seq_speed(seq_speed)
 
   init_params()
+  init_gfx()
   
   -- print(norns.state.script)
 end
@@ -69,38 +105,51 @@ function init_params()
   params:add_control("smash_reso","resonance",
   -- (minval, maxval, warp, step, default, units, quantum, wrap)
     controlspec.new(0,1,'lin',0.05,0.2,'pewpew',0.05/1))
-  params:set_action("smash_reso",function(ouchie_wawa)
-    engine.resonance(ouchie_wawa)
-  end)
+  params:set_action("smash_reso",
+    function(reso)
+      engine.resonance(reso)
+    end)
 
   params:add_control("smash_gain","gain",
     controlspec.new(0.2,20,'exp',0.05,1,'OUCH',1/50))
-  params:set_action("smash_gain",function(huge_gains_bro)
-    engine.gain(huge_gains_bro)
-  end)
+  params:set_action("smash_gain",
+    function(gain)
+      engine.gain(gain)
+    end)
 
   params:add_control("smash_noise","noise",
-    controlspec.new(0,1,'exp',0.001,0.001,'kiss',1/100))
-  params:set_action("smash_noise",function(hz)
-    engine.noise(hz)
-  end)
+
+  -- (minval, maxval, warp, step, default, units, quantum, wrap
+    --ctrolspec.new(0.2,20,'exp',0.05,1,'OUCH',1/50))
+    controlspec.new(0.0001,0.2,'exp',0.001,0.001,'kiss',0.01),
+    poop)
+  params:set_action("smash_noise",
+    function(noise)
+      print(noise)
+      engine.noise(noise)
+    end)
 
   params:add_control("smash_leak","leak",
-    controlspec.new(0,1,'exp',0.001,0.001,'drips',1/100))
-  params:set_action("smash_leak",function(hz)
-    engine.leak(hz)
-  end)
+    controlspec.new(0.0001,0.2,'exp',0.001,0.001,'drips',0.01),
+    poop)
+  params:set_action("smash_leak",
+    function(leak)
+      print(leak)
+      engine.leak(leak)
+    end)
 
   params:add_option("smash_hum","hum",{"50Hz","60Hz"},1)
-  params:set_action("smash_hum",function(i)
-    engine.hum(({50,60})[i])
-  end)
+  params:set_action("smash_hum",
+    function(i)
+      engine.hum(({50,60})[i])
+    end)
 
   params:add_option("smash_side","ears",{"left","both","right"},2)
-  params:set_action("smash_side",function(i)
-    print ("side "..i)
-    engine.side(i - 2)
-  end)
+  params:set_action("smash_side",
+    function(i)
+      print ("side "..i)
+      engine.side(i - 2)
+    end)
 end
 
 function handle_play_tick()
@@ -198,6 +247,10 @@ function play_it_safe()
   else
     detach()
   end
+end
+
+function redraw()
+  gfx.redraw()
 end
 
 function key(k, z)
