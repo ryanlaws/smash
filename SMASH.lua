@@ -52,7 +52,6 @@ engine.name = "StereoLpg"
 armed = false
 recording = false
 sharpness = 0.5
-seq_speed = 48
 events = {}
 
 
@@ -78,9 +77,6 @@ function init_events()
   print('initializing events')
 end
 
-function set_seq_speed(new_speed)
-  spokes.division = 1/new_speed
-end
 
 function init_gfx()
   clock.run(function()
@@ -89,22 +85,22 @@ function init_gfx()
       redraw()
     end
   end)
+  GFX.init()
 end
 
 function init()
   -- Just Clock Things
-  clock.internal.set_tempo(120)
-  clock.set_source("internal")
+  -- update: LEAVE CLOCK ALONE!!
+  --clock.internal.set_tempo(120)
+  --clock.set_source("internal")
 
   lettuce = lattice:new()
   spokes = lettuce:new_pattern{
     action = noop,
-    division = 1/seq_speed,
+    division = 1/48,
     enabled = true
   }
   lettuce:start()
-
-  set_seq_speed(seq_speed)
 
   init_params()
   init_gfx()
@@ -164,9 +160,21 @@ function init_params()
       print ("side "..i)
       engine.side(i - 2)
     end)
+
+  params:add_control("smash_ticks", "ticks",
+    controlspec.new(1,96,'lin',1,48,'',1/96))
+  params:set_action("smash_ticks", 
+    function (new_speed)
+      spokes.division = 1/new_speed
+    end)
 end
 
 function handle_play_tick()
+  if type(tick_pos) ~= "number" then
+    print("about to explode because tick_pos is a ".. type(tick_pos))
+  end
+  -- there's a bug here that happens when the event tick pos > tick length
+  -- may need to mitigate elsewhere for simplicity
   if tick_pos == events[next_event_pos][1] then
     -- print(next_event_pos, tick_pos, tick_length)
     strike(events[next_event_pos][2])
@@ -198,6 +206,9 @@ function start_recording()
   last_event_pos = 0
   next_event_pos = 1
 
+  -- dirty
+  GFX.reset_event_ripples()
+
   -- clear events
   events = {}
 
@@ -205,7 +216,6 @@ function start_recording()
   -- I'm not super set on this
   -- seems reasonable atm tho
   -- SPEED IT UP SLOW IT DOWN
-  seq_speed = 48
 
   armed = false
   recording = true
@@ -215,6 +225,10 @@ end
 
 function stop_recording()
   print('stopped recording')
+  while #events > 0 and tick_length == events[#events][1] do
+    print ('deleting event #'..#events)
+    table.remove(events, #events)
+  end
   recording = false
 end
 
@@ -246,14 +260,18 @@ function enc(e, d)
     engine.sharpness(sharpness)
     print (sharpness)
   elseif e == 3 then
-    seq_speed = math.min(math.max(seq_speed + d, 12), 96)
-    set_seq_speed(seq_speed)
+    params:delta('smash_ticks', d)
   end
 end
 
 function record_event(sharpness_value)
-  print('recording event @ '..tick_pos..' with value '..sharpness_value);
-  events[#events + 1] = { tick_pos, sharpness_value }
+  -- avoid multiple events on a clock tick; they make no sense here
+  if #events == 0 or events[#events][1] ~= tick_pos then
+    print('recording event @ '..tick_pos..' with value '..sharpness_value);
+    events[#events + 1] = { tick_pos, sharpness_value }
+  else
+    print("ALREADY HAVE AN EVENT HERE, CRANK THE TICKS")
+  end
 end
 
 function strike(sharpness_value)
@@ -280,6 +298,8 @@ function redraw()
   if #events > 0 and not recording and not armed then
     GFX.draw_seq(events, last_event_pos, tick_pos, tick_length)
   end
+  GFX.draw_status(recording, armed, #events)
+  GFX.draw_speed(params:get('smash_ticks'))
   GFX.down()
 end
 
