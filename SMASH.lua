@@ -9,8 +9,8 @@
 
 lattice = require('lattice')
 tabutil = require('tabutil')
--- gfx = require('SMASH/lib/gfx') -- always require() - easy to move later
-gfx = include('SMASH/lib/gfx') -- lol but it won't update then :|
+-- GFX = require('SMASH/lib/gfx') -- always require() - easy to move later
+GFX = include('SMASH/lib/gfx') -- lol but it won't update then :|
 
 engine.name = "StereoLpg"
 
@@ -167,10 +167,11 @@ function init_params()
 end
 
 function handle_play_tick()
-  if tick_pos == events[event_pos][1] then
-    -- print(event_pos, tick_pos, tick_length)
-    strike(events[event_pos][2])
-    event_pos = event_pos % #events + 1
+  if tick_pos == events[next_event_pos][1] then
+    -- print(next_event_pos, tick_pos, tick_length)
+    strike(events[next_event_pos][2])
+    last_event_pos = next_event_pos
+    next_event_pos = next_event_pos % #events + 1
   end
   tick_pos = (tick_pos + 1) % tick_length
 end
@@ -194,7 +195,8 @@ function start_recording()
   -- reset counters
   tick_pos = 0
   tick_length = 0
-  event_pos = 1
+  last_event_pos = 0
+  next_event_pos = 1
 
   -- clear events
   events = {}
@@ -219,9 +221,13 @@ end
 function start_playing()
   spokes.action = handle_play_tick
   tick_pos = 0
-  event_pos = 1
+  last_event_pos = 0
+  next_event_pos = 1
   print("started playing with "..#events.." events and "
     ..(tick_length or "(nil)").." tick length")
+
+  -- totally gross but yikes, event queues or something
+  GFX.restart_seq()
 end
 
 function stop_playing()
@@ -253,7 +259,7 @@ end
 function strike(sharpness_value)
   engine.sharpness(sharpness_value)
   engine.strike(1) 
-  gfx.create_strike(sharpness_value)
+  GFX.create_strike(sharpness_value)
 end
 
 function play_it_safe()
@@ -265,14 +271,16 @@ function play_it_safe()
 end
 
 function redraw()
-  gfx.up()
-  gfx.draw_leak(params:get('smash_leak'))
-  gfx.draw_sharpness(sharpness)
-  gfx.draw_strikes()
+  GFX.up()
+  GFX.draw_noise()
+  GFX.draw_gain()
+  GFX.draw_leak(params:get('smash_leak'))
+  GFX.draw_sharpness(sharpness)
+  GFX.draw_strikes()
   if #events > 0 and not recording and not armed then
-    gfx.draw_seq(events, event_pos, tick_pos, tick_length)
+    GFX.draw_seq(events, last_event_pos, tick_pos, tick_length)
   end
-  gfx.down()
+  GFX.down()
 end
 
 function key(k, z)
