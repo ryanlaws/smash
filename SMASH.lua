@@ -9,7 +9,9 @@
 
 lattice = require('lattice')
 tabutil = require('tabutil')
-gfx = require('SMASH/lib/gfx') -- always require() - easy to move later
+-- gfx = require('SMASH/lib/gfx') -- always require() - easy to move later
+gfx = include('SMASH/lib/gfx') -- lol but it won't update then :|
+
 engine.name = "StereoLpg"
 
 -- so require() can load stuff from dust
@@ -18,8 +20,8 @@ engine.name = "StereoLpg"
 
 -- TODO
 -- PRIORITY
--- - graphix... 
 -- - params
+-- - - add sharpness
 -- - - fix formatters
 -- - - - JUST LOOKIT norns formatter api-docs/code
 -- - - fix resonance (liiittle too loud)
@@ -33,12 +35,19 @@ engine.name = "StereoLpg"
 -- - - bring max decay up a bit
 -- - - bring min decay down a bit
 -- - etc.
+-- - - tweak sharpness
+-- - - - vol vs. cutoff decay
+-- - - - cutoff amount
+-- - - - consider slew
+-- - - - consider faster -> more open "screaming" a la 303
 -- - - refactor clock to use ACTUAL BPM
 -- - - move seq stuff to own module
--- NOT PRIORITY
+-- NOT PRIORITY (after UI done maybe
 -- - config knob behaviors
 -- - - what does this even mean? like assign E2/E3?
 -- - do that rhythm trigger thing wm wanted I guess
+-- - overdub
+-- - crow (env? trig? gate?)
 
 armed = false
 recording = false
@@ -46,11 +55,16 @@ sharpness = 0.5
 seq_speed = 48
 events = {}
 
+
 function noop() end
 
 function identity(x) return x  end
 
-function poop(x) return 'poop' end
+function to_string(x) return '' .. (x ~= nil and x or 'nil')  end
+
+function param_value(x) 
+  return x:get()
+end
 
 function rerun()
   norns.script.load(norns.state.script)
@@ -84,7 +98,7 @@ function init()
 
   lettuce = lattice:new()
   spokes = lettuce:new_pattern{
-    action = play_next_event,
+    action = noop,
     division = 1/seq_speed,
     enabled = true
   }
@@ -121,8 +135,8 @@ function init_params()
 
   -- (minval, maxval, warp, step, default, units, quantum, wrap
     --ctrolspec.new(0.2,20,'exp',0.05,1,'OUCH',1/50))
-    controlspec.new(0.0001,0.2,'exp',0.001,0.001,'kiss',0.01),
-    poop)
+    controlspec.new(0.0001,1,'exp',0.001,0.001,'kiss',1/20),
+    param_value)
   params:set_action("smash_noise",
     function(noise)
       print(noise)
@@ -130,8 +144,8 @@ function init_params()
     end)
 
   params:add_control("smash_leak","leak",
-    controlspec.new(0.0001,0.2,'exp',0.001,0.001,'drips',0.01),
-    poop)
+    controlspec.new(0.0001,1,'exp',0.001,0.001,'drips',1/20),
+    param_value)
   params:set_action("smash_leak",
     function(leak)
       print(leak)
@@ -222,7 +236,7 @@ end
 
 function enc(e, d)
   if e == 2 then
-    sharpness = math.min(math.max(sharpness + (d / 10), 0), 1)
+    sharpness = math.min(math.max(sharpness + (d / 10), 0.1), 1)
     engine.sharpness(sharpness)
     print (sharpness)
   elseif e == 3 then
@@ -239,6 +253,7 @@ end
 function strike(sharpness_value)
   engine.sharpness(sharpness_value)
   engine.strike(1) 
+  gfx.create_strike(sharpness_value)
 end
 
 function play_it_safe()
@@ -250,7 +265,14 @@ function play_it_safe()
 end
 
 function redraw()
-  gfx.redraw()
+  gfx.up()
+  gfx.draw_leak(params:get('smash_leak'))
+  gfx.draw_sharpness(sharpness)
+  gfx.draw_strikes()
+  if #events > 0 and not recording and not armed then
+    gfx.draw_seq(events, event_pos, tick_pos, tick_length)
+  end
+  gfx.down()
 end
 
 function key(k, z)
