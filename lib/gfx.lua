@@ -1,8 +1,4 @@
--- Stack = include('SMASH/lib/stack')
-
 local g = {}
--- TODO
---
 -- some methods stolen from 
 -- northern-information/athenaeum/lib/graphics.lua
 
@@ -46,12 +42,12 @@ function g.down()
   screen.update()
 end
 
-function g.draw_strikes()
+function g.draw_strikes(side)
   if strike_sharpness == nil then 
     return 
   end
 
-  g.draw_ears(strike_sharpness, strike_level, false)
+  g.draw_ears(strike_sharpness, strike_level, side)
 
   strike_level = math.floor(strike_level * ((1 - strike_sharpness) ^ 3))
   if strike_level < 1 then 
@@ -63,7 +59,7 @@ function g.draw_ear(pos, size, level)
   g.circle(pos, 32, size, level)
 end
 
-function g.draw_ears(sharpness, level, draw_shut)
+function g.draw_ears(sharpness, level, side)
   sharpness = math.floor(sharpness * 10)
   radius = math.ceil((sharpness ^ 2) / 3.8) 
 
@@ -82,9 +78,9 @@ function g.draw_ears(sharpness, level, draw_shut)
   end
 end
 
-function g.draw_sharpness(sharpness)
+function g.draw_sharpness(sharpness, side)
   local level = (sharpness < 0.4) and (5 - (sharpness * 10)) or 1
-  g.draw_ears(sharpness, level, true)
+  g.draw_ears(sharpness, level, side)
 end
 
 function g.safe_level(l)
@@ -108,51 +104,27 @@ function g.draw_needle(tick_pos, tick_length)
     1, 8, true)
 end
 
-function g.restart_seq()
-  print('seq restarted')
+function g.reset_seq()
+  print('(gfx) seq reset')
+  -- g.event_ripples = {}
   event_last_pos = 0
 end
 
-function g.reset_event_ripples()
-  g.event_ripples = {}
-end
-
 function g.add_event_ripple(pos)
-  print('adding ripple @ '..pos)
-  g.event_ripples[#g.event_ripples+1] = { pos=event_last_pos, size=1 }
+  --print('adding ripple @ '..pos)
+  g.event_ripples[#g.event_ripples+1] = { pos=pos, size=1, level=math.random(6, 10) }
 end
 
--- there's something screwy with ripple position
--- could be scaling
--- always seems to be behind needle
--- events is magically here lol (global, I guess?)
 function g.draw_event_ripple(ripple)
-  if ripple == nil or ripple.pos == nil or #events == 0 or events[ripple.pos] == nil or events[ripple.pos][1] == nil or tick_length == nil or tick_length == 0 then
-    print("ABOUT TO EXPLODE")
-    print('ripple '..((ripple == nil) and '(nil)' or '(table)'))
-    print('ripple.pos ' .. ripple.pos)
-    print('#events '..#events) 
-    print('events[ripple.pos]'..events[ripple.pos]) 
-    print('events[ripple.pos][1]'..events[ripple.pos][1]) 
-    print('tick_length'..tick_length)
-    print("EXPLODED BY NOW")
-  end
-  temp = ripple
-  temp = temp.pos
-  temp = events[temp]
-  temp = temp[1]
-  temp = temp / tick_length
-  temp = temp - 0.25
-  radians = temp * 2 * math.pi
-  --radians = (events[ripple.pos][1] / tick_length - 0.25) * 2 * math.pi
+  radians = (ripple.pos - 0.25) * 2 * math.pi
   g.circle(
     math.floor(math.cos(radians) * 32 + 64),
     math.floor(math.sin(radians) * 32 + 32),
     ripple.size,
-    16 - ripple.size
+    ripple.level
   )
-  -- existing stuff here
-  ripple.size = ripple.size + 1
+  ripple.size = ripple.size + math.random(1,3)
+  ripple.level = ripple.level - math.random(1,2)
 end
 
 function g.draw_ngon(events, tick_length, last_index)
@@ -184,13 +156,16 @@ function g.draw_seq(events, event_pos, tick_pos, tick_length)
   -- catch up
   local ripples_added = 0
   while event_pos ~= event_last_pos do
-    print("catching up to "..event_pos.." from "..event_last_pos.."...")
+    --print("catching up to "..event_pos.." from "..event_last_pos.."...")
     event_last_pos = (event_last_pos ~= nil) and (event_last_pos % #events + 1) or 1
-    g.add_event_ripple(event_last_pos)
+    g.add_event_ripple(tick_pos / tick_length)
     ripples_added = ripples_added + 1
   end
   if ripples_added > 1 then
-    print("WHEW lad. added "..ripples_added)
+    ---print("WHEW lad. added "..ripples_added)
+  end
+  while #g.event_ripples > 10 do
+    table.remove(g.event_ripples,1)
   end
 
   g.remove = {}
@@ -312,11 +287,8 @@ function g.draw_gain()
   g.safe_level(params:get('smash_gain'))
   screen.rect(2, 2, 125, 61)
   screen.stroke()
--- - something that gets painfully bright
--- - maybe should influence leak gfx too
 end
 
--- special events
 function g.create_strike(sharpness)
   strike_sharpness = sharpness
   strike_level = 15

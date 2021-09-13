@@ -28,9 +28,6 @@ engine.name = "StereoLpg"
 -- - - - should baaarely self-osc (0.925) at max
 -- - - add tempo (should just be, like, 20-300 BPM or w/e)
 -- - synth
--- - - slew noise
--- - - slew gain
--- - - slew reso
 -- - - bring min freq down a bit
 -- - - bring max decay up a bit
 -- - - bring min decay down a bit
@@ -109,11 +106,9 @@ function init()
 end
 
 function init_params()
-  params:add_group("SMASH",6)
+  params:add_group("SMASH",9)
 
-  -- (id, name, controlspec, formatter)
   params:add_control("smash_reso","resonance",
-  -- (minval, maxval, warp, step, default, units, quantum, wrap)
     controlspec.new(0,1,'lin',0.05,0.2,'pewpew',0.05/1))
   params:set_action("smash_reso",
     function(reso)
@@ -127,15 +122,13 @@ function init_params()
       engine.gain(gain)
     end)
 
-  params:add_control("smash_noise","noise",
+  params:add_separator()
 
-  -- (minval, maxval, warp, step, default, units, quantum, wrap
-    --ctrolspec.new(0.2,20,'exp',0.05,1,'OUCH',1/50))
+  params:add_control("smash_noise","noise",
     controlspec.new(0.0001,1,'exp',0.001,0.001,'kiss',1/20),
     param_value)
   params:set_action("smash_noise",
     function(noise)
-      print(noise)
       engine.noise(noise)
     end)
 
@@ -144,7 +137,6 @@ function init_params()
     param_value)
   params:set_action("smash_leak",
     function(leak)
-      print(leak)
       engine.leak(leak)
     end)
 
@@ -153,6 +145,8 @@ function init_params()
     function(i)
       engine.hum(({50,60})[i])
     end)
+
+  params:add_separator()
 
   params:add_option("smash_side","ears",{"left","both","right"},2)
   params:set_action("smash_side",
@@ -200,14 +194,15 @@ function disarm_recording()
 end
 
 function start_recording()
+  -- dirty
+  GFX.reset_seq()
+
   -- reset counters
   tick_pos = 0
   tick_length = 0
   last_event_pos = 0
   next_event_pos = 1
 
-  -- dirty
-  GFX.reset_event_ripples()
 
   -- clear events
   events = {}
@@ -241,7 +236,7 @@ function start_playing()
     ..(tick_length or "(nil)").." tick length")
 
   -- totally gross but yikes, event queues or something
-  GFX.restart_seq()
+  GFX.reset_seq()
 end
 
 function stop_playing()
@@ -289,17 +284,23 @@ function play_it_safe()
 end
 
 function redraw()
+  leak = params:get('smash_leak')
+  side = params:get("smash_side")
+  speed = params:get('smash_ticks')
+
   GFX.up()
   GFX.draw_noise()
   GFX.draw_gain()
-  GFX.draw_leak(params:get('smash_leak'))
-  GFX.draw_sharpness(sharpness)
-  GFX.draw_strikes()
-  if #events > 0 and not recording and not armed then
+  GFX.draw_leak(leak)
+  GFX.draw_sharpness(sharpness, side)
+  GFX.draw_strikes(side)
+  --if #events > 0 and not recording and not armed then
+  if tick_pos then
     GFX.draw_seq(events, last_event_pos, tick_pos, tick_length)
   end
+  --end
   GFX.draw_status(recording, armed, #events)
-  GFX.draw_speed(params:get('smash_ticks'))
+  GFX.draw_speed(speed)
   GFX.down()
 end
 
@@ -307,20 +308,22 @@ function key(k, z)
   if z ~= 1 then return end
   if k == 2 then 
     strike(sharpness)
-    if armed and not recording then start_recording() end
-    if recording then record_event(sharpness) end
+    if armed and not recording then 
+      start_recording() 
+    end
+    if recording then 
+      record_event(sharpness) 
+    end
   elseif k == 3 then
     if recording then
       stop_recording()
       play_it_safe()
+    elseif armed then
+      disarm_recording()
+      play_it_safe()
     else
-      if armed then
-        disarm_recording()
-        play_it_safe()
-      else
-        stop_playing()
-        arm_recording()
-      end
+      stop_playing()
+      arm_recording()
     end
   end
 end
