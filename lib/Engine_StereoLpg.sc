@@ -13,7 +13,7 @@ Engine_StereoLpg : CroneEngine {
       * [ ] slews
     */
     synth = { | t_strike=0, sharpness=1, side=0,
-      leak=0.001, noise=0.001, hum=50, gain=1.05, resonance=0.1 |
+      leak=0.001, noise=0.001, hum=50, gain=1.05, resonance=0.1, lag=1 |
       var ears = SoundIn.ar([0, 1]);
       var sides = [
         ears[[0,0]],
@@ -22,12 +22,18 @@ Engine_StereoLpg : CroneEngine {
       ];
 
       var decay, volume, env, freq, gated, leaked;
+      // LAG
+      noise = noise.lag(lag);
+      gain = gain.lag(lag);
+      resonance = resonance.lag(lag);
+      leak = leak.lag(lag);
+
       decay = (1 - sharpness) * 0.8 + 0.2 ** 2 * 1.5;
       volume = sharpness / 2 + 0.5;
       env = Env.perc(0.01, decay, volume, -6);
       env = EnvGen.kr(env, t_strike);
 
-      freq = (env * 85 + 50).midicps;
+      freq = (env * 100 + 28).midicps;
 
       side = side.max(-1).min(1).round + 1;
       side = Select.ar(side, sides);
@@ -35,7 +41,8 @@ Engine_StereoLpg : CroneEngine {
       noise = Mix.ar(LFSaw.ar([hum, hum + 0.05], 0, noise/12))!2 + 
         WhiteNoise.ar(noise/3*2!2);
 
-      gated = DFM1.ar(side + noise, freq, resonance, env * gain);
+      gated = DFM1.ar(side + noise, freq, resonance, env ** 0.5 * gain);
+      gated = gated * (env ** 0.5);
       leaked = (side / 2 + noise) * leak;
 
       (gated + leaked * gain).tanh;
