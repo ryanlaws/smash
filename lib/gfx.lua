@@ -63,9 +63,6 @@ function g.draw_ears(sharpness, level, side)
   sharpness = math.floor(sharpness * 10)
   radius = math.ceil((sharpness ^ 2) / 3.8) 
 
-  -- this is really not this thing's responsibility
-  side = params:get("smash_side")
-
   l_open = side < 3
   r_open = side > 1
 
@@ -106,12 +103,10 @@ end
 
 function g.reset_seq()
   print('(gfx) seq reset')
-  -- g.event_ripples = {}
   event_last_pos = 0
 end
 
 function g.add_event_ripple(pos)
-  --print('adding ripple @ '..pos)
   g.event_ripples[#g.event_ripples+1] = { pos=pos, size=1, level=math.random(6, 10) }
 end
 
@@ -153,16 +148,11 @@ function g.draw_seq(events, event_pos, tick_pos, tick_length)
   g.draw_ngon(events, tick_length, event_last_pos)
   g.draw_needle(tick_pos, tick_length)
 
-  -- catch up
   local ripples_added = 0
   while event_pos ~= event_last_pos do
-    --print("catching up to "..event_pos.." from "..event_last_pos.."...")
     event_last_pos = (event_last_pos ~= nil) and (event_last_pos % #events + 1) or 1
-    g.add_event_ripple(tick_pos / tick_length)
+    g.add_event_ripple((tick_pos + tick_length - 1) % tick_length / tick_length)
     ripples_added = ripples_added + 1
-  end
-  if ripples_added > 1 then
-    ---print("WHEW lad. added "..ripples_added)
   end
   while #g.event_ripples > 10 do
     table.remove(g.event_ripples,1)
@@ -171,16 +161,13 @@ function g.draw_seq(events, event_pos, tick_pos, tick_length)
   g.remove = {}
   for i = 1,#g.event_ripples do
     g.draw_event_ripple(g.event_ripples[i])
--- - n-gon connecting circle points ("rays"?)
     if g.event_ripples[i].size > 10 then
       g.remove[#g.remove+1] = i
     end
   end
 
   for i = #g.remove, 1, -1 do
-    -- print("attempting to remove a ripple")
     table.remove(g.event_ripples, g.remove[i])
-    --print("removed ripple "..#g.event_ripples)
   end
 end
 
