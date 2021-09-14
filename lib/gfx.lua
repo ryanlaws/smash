@@ -1,21 +1,18 @@
-local g = {}
+local FN = include('SMASH/lib/function') 
+
+local g = {
+  leaks = {}
+}
 -- some methods stolen from 
 -- northern-information/athenaeum/lib/graphics.lua
-
-local circle_size = 1
-local circle_size_dir = 2
-local circle_size_max = 40
-
-g.leaks = {}
-local leak_buffer
-local leak_frame_index = 0
-local leak_counter = 0
 
 local strike_sharpness = nil
 local strike_level = nil
 
 local event_last_pos = 0
-g.event_ripples = {}
+
+local add_ripple_q = FN.make_q()
+g.ripples = {}
 
 function g.text(x, y, s, l)
   g.safe_level(l)
@@ -106,8 +103,13 @@ function g.reset_seq()
   event_last_pos = 0
 end
 
-function g.add_event_ripple(pos)
-  g.event_ripples[#g.event_ripples+1] = { pos=pos, size=1, level=math.random(6, 10) }
+function g.add_event_ripple()
+  add_ripple_q.nq(function (pos, len)
+    print('adding ripple at '..pos..' of len '..len)
+    pos = (pos + len - 1) % len / len
+    print('calculated ripple at '..pos)
+    g.ripples[#g.ripples+1] = { pos=pos, size=1, level=math.random(6, 10) }
+  end)
 end
 
 function g.draw_event_ripple(ripple)
@@ -144,31 +146,58 @@ function g.draw_ngon(events, tick_length, last_index)
   screen.stroke()
 end
 
-function g.draw_seq(events, event_pos, tick_pos, tick_length)
-  g.draw_ngon(events, tick_length, event_last_pos)
-  g.draw_needle(tick_pos, tick_length)
-
-  local ripples_added = 0
-  while event_pos ~= event_last_pos do
-    event_last_pos = (event_last_pos ~= nil) and (event_last_pos % #events + 1) or 1
-    g.add_event_ripple((tick_pos + tick_length - 1) % tick_length / tick_length)
-    ripples_added = ripples_added + 1
-  end
-  while #g.event_ripples > 10 do
-    table.remove(g.event_ripples,1)
+function g.draw_ripples()
+  while #g.ripples > 10 do
+    table.remove(g.ripples,1)
   end
 
   g.remove = {}
-  for i = 1,#g.event_ripples do
-    g.draw_event_ripple(g.event_ripples[i])
-    if g.event_ripples[i].size > 10 then
+  for i = 1,#g.ripples do
+    g.draw_event_ripple(g.ripples[i])
+    if g.ripples[i].size > 10 then
       g.remove[#g.remove+1] = i
     end
   end
 
   for i = #g.remove, 1, -1 do
-    table.remove(g.event_ripples, g.remove[i])
+    table.remove(g.ripples, g.remove[i])
   end
+end
+
+function g.draw_pos(where, last_event_pos, tick_pos)
+  -- bullshit
+  screen.aa(0)
+  screen.font_face(2)
+  screen.font_size(8)
+
+  if last_event_pos == nil then last_event_pos = '(nil)' end
+  if event_last_pos == nil then event_last_pos = '(nil)' end
+  if tick_pos == nil then tick_pos = '(nil)' end
+  if where == 'l' then
+    screen.move(4, 8)
+    screen.text('t '..tick_pos..', elp '..event_last_pos..', lep '..last_event_pos)
+  elseif where == 'r' then
+    screen.move(124, 16)
+    screen.text_right('t '..tick_pos..', elp '..event_last_pos..', lep '..last_event_pos)
+  end
+
+  -- reset
+  screen.aa(0)
+  screen.font_face(2)
+  screen.font_size(16)
+end
+
+function g.draw_seq(events, event_pos, tick_pos, tick_length)
+  g.draw_ngon(events, tick_length, event_last_pos)
+  g.draw_needle(tick_pos - 1, tick_length)
+
+  while event_pos ~= event_last_pos do
+    event_last_pos = (event_last_pos ~= nil) and (event_last_pos % #events + 1) or 1
+  end
+
+  add_ripple_q.fire(tick_pos, tick_length)
+
+  g.draw_ripples()
 end
 
 function g.init()
@@ -179,7 +208,7 @@ end
 
 function g.draw_status(recording, armed, event_count)
   if not armed and not recording and event_count == 0 then
-    -- default, nothing going on
+    -- nothing happened yet
   elseif armed then
     g.circle(9, 56, 4, 8, false)
   elseif recording then
@@ -190,8 +219,6 @@ function g.draw_status(recording, armed, event_count)
     screen.line(14, 56)
     screen.line(5, 60)
     screen.fill()
-  else
-    print('wat')
   end
   screen.stroke()
 end
@@ -220,10 +247,8 @@ function g.chance(x)
 end
 
 function g.draw_leak(leak)
-  leak_counter = leak_counter + 1
   if g.chance(leak) then
     g.add_new_leak()
-    leak_counter = 0
   end
 
   removes = {}
@@ -276,9 +301,14 @@ function g.draw_gain()
   screen.stroke()
 end
 
-function g.create_strike(sharpness)
+function g.strike(sharpness, from_seq)
   strike_sharpness = sharpness
   strike_level = 15
+
+  if from_seq then
+    --g.add_event_ripple((tick_pos + tick_length - 1) % tick_length / tick_length)
+    g.add_event_ripple()
+  end
 end
 
 return g

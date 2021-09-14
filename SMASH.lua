@@ -11,8 +11,31 @@ lattice = require('lattice')
 tabutil = require('tabutil')
 -- GFX = require('SMASH/lib/gfx') -- always require() - easy to move later
 GFX = include('SMASH/lib/gfx') -- lol but it won't update then :|
+FN = include('SMASH/lib/function') 
 
 engine.name = "StereoLpg"
+
+capturing = false
+img_idx = 0
+
+--[[
+SCREEN CAPTURE
+infinitedigits — 09/09/2021
+i edited the script with this:
+[8:33 AM]
+-- define somewhere
+imagei=0
+
+-- inside redraw routine
+_norns.screen_export_png(string.format("/dev/shm/image%04d.png",imagei)) imagei=imagei+1
+
+-- then ffmpeged into a video:
+ffmpeg -y -framerate 15 -pattern_type glob -i '*.png' -c:v libx264 -r 30 -pix_fmt yuv420p 1.mp4
+
+-- then ffmpeged into a gif:
+ffmpeg -i 1.mp4 out.gif
+
+--]]
 
 -- so require() can load stuff from dust
 -- i.e. require('SMASH/lib/gfx')
@@ -21,12 +44,8 @@ engine.name = "StereoLpg"
 -- TODO
 -- PRIORITY
 -- - params
--- - - add sharpness
--- - - fix formatters
--- - - - JUST LOOKIT norns formatter api-docs/code
 -- - - fix resonance (liiittle too loud)
 -- - - - should baaarely self-osc (0.925) at max
--- - - add tempo (should just be, like, 20-300 BPM or w/e)
 -- - synth
 -- - - bring min freq down a bit
 -- - - bring max decay up a bit
@@ -37,7 +56,6 @@ engine.name = "StereoLpg"
 -- - - - cutoff amount
 -- - - - consider slew
 -- - - - consider faster -> more open "screaming" a la 303
--- - - refactor clock to use ACTUAL BPM
 -- - - move seq stuff to own module
 -- NOT PRIORITY (after UI done maybe
 -- - config knob behaviors
@@ -49,31 +67,34 @@ engine.name = "StereoLpg"
 armed = false
 recording = false
 sharpness = 0.5
-events = {}
-
-
-function noop() end
-
-function identity(x) return x  end
-
-function to_string(x) return '' .. (x ~= nil and x or 'nil')  end
-
-function param_value(x) 
-  return x:get()
-end
+seq_events = {}
 
 function rerun()
   norns.script.load(norns.state.script)
 end
 
-function r()
-  rerun()
+function force_lattice_restart()
+  spokes.phase = spokes.division * clk.ppqn * clk.meter
+  --if spokes.phase > (spokes.division * ppm) then
+  -- busted lattice code:
+  --local ppm = clk.ppqn * clk.meter
+  --spokes.phase = spokes.phase + 1
+  --if spokes.phase > (spokes.division * ppm) then
+  --  spokes.phase = spokes.phase - (spokes.division * ppm)
+  --  spokes.action(clk.transport)
+  --end
 end
 
 function init_events()
   print('initializing events')
-end
+  events = {
+    strike     = FN.make_pub('strike'),
+    play_start = FN.make_pub('play'),
+    rec_start  = FN.make_pub('rec')
+  }
 
+  events.strike.sub(strike_engine)
+end
 
 function init_gfx()
   clock.run(function()
@@ -82,24 +103,26 @@ function init_gfx()
       redraw()
     end
   end)
+
   GFX.init()
+
+  events.strike.sub(GFX.strike)
+  events.play_start.sub(GFX.reset_seq)
+  events.rec_start.sub(GFX.reset_seq)
 end
 
 function init()
-  -- Just Clock Things
-  -- update: LEAVE CLOCK ALONE!!
-  --clock.internal.set_tempo(120)
-  --clock.set_source("internal")
-
-  lettuce = lattice:new()
-  spokes = lettuce:new_pattern{
-    action = noop,
+  -- clock
+  clk = lattice:new()
+  spokes = clk:new_pattern{
+    action = FN.noop,
     division = 1/48,
     enabled = true
   }
-  lettuce:start()
+  clk:start()
 
   init_params()
+  init_events()
   init_gfx()
   
   -- print(norns.state.script)
@@ -108,6 +131,7 @@ end
 function init_params()
   params:add_group("SMASH",9)
 
+  -- TODO: refactor. tooooo much boilerplate
   params:add_control("smash_reso","resonance",
     controlspec.new(0,1,'lin',0.05,0.2,'pewpew',0.05/1))
   params:set_action("smash_reso",
@@ -126,7 +150,7 @@ function init_params()
 
   params:add_control("smash_noise","noise",
     controlspec.new(0.0001,1,'exp',0.001,0.001,'kiss',1/20),
-    param_value)
+    FN.param_value)
   params:set_action("smash_noise",
     function(noise)
       engine.noise(noise)
@@ -134,7 +158,7 @@ function init_params()
 
   params:add_control("smash_leak","leak",
     controlspec.new(0.0001,1,'exp',0.001,0.001,'drips',1/20),
-    param_value)
+    FN.param_value)
   params:set_action("smash_leak",
     function(leak)
       engine.leak(leak)
@@ -164,16 +188,10 @@ function init_params()
 end
 
 function handle_play_tick()
-  if type(tick_pos) ~= "number" then
-    print("about to explode because tick_pos is a ".. type(tick_pos))
-  end
-  -- there's a bug here that happens when the event tick pos > tick length
-  -- may need to mitigate elsewhere for simplicity
-  if tick_pos == events[next_event_pos][1] then
-    -- print(next_event_pos, tick_pos, tick_length)
-    strike(events[next_event_pos][2])
+  if tick_pos == seq_events[next_event_pos][1] then
+    events.strike.pub(seq_events[next_event_pos][2], true)
     last_event_pos = next_event_pos
-    next_event_pos = next_event_pos % #events + 1
+    next_event_pos = next_event_pos % #seq_events + 1
   end
   tick_pos = (tick_pos + 1) % tick_length
 end
@@ -183,10 +201,6 @@ function handle_rec_tick()
   tick_length = tick_length + 1
 end
 
-function arm_recording()
-  armed = true
-  print('armed')
-end
 
 function disarm_recording()
   armed = false
@@ -194,8 +208,7 @@ function disarm_recording()
 end
 
 function start_recording()
-  -- dirty
-  GFX.reset_seq()
+  events.rec_start.pub()
 
   -- reset counters
   tick_pos = 0
@@ -203,50 +216,37 @@ function start_recording()
   last_event_pos = 0
   next_event_pos = 1
 
-
-  -- clear events
-  events = {}
-
-  -- set clock to medium position 
-  -- I'm not super set on this
-  -- seems reasonable atm tho
-  -- SPEED IT UP SLOW IT DOWN
+  -- clear seq_events
+  seq_events = {}
 
   armed = false
   recording = true
   spokes.action = handle_rec_tick
+  force_lattice_restart()
   print('started recording')
 end
 
 function stop_recording()
   print('stopped recording')
-  while #events > 0 and tick_length == events[#events][1] do
-    print ('deleting event #'..#events)
-    table.remove(events, #events)
+  while #seq_events > 0 and tick_length == seq_events[#seq_events][1] do
+    print ('deleting event #'..#seq_events)
+    table.remove(seq_events, #seq_events)
   end
   recording = false
 end
 
 function start_playing()
-  spokes.action = handle_play_tick
   tick_pos = 0
   last_event_pos = 0
   next_event_pos = 1
-  print("started playing with "..#events.." events and "
+  print("started playing with "..#seq_events.." seq_events and "
     ..(tick_length or "(nil)").." tick length")
 
   -- totally gross but yikes, event queues or something
-  GFX.reset_seq()
-end
+  events.play_start.pub()
 
-function stop_playing()
-  print('stopped playing')
-  spokes.action = noop
-end
-
-function detach()
-  print('detaching handlers')
-  spokes.action = noop
+  spokes.action = handle_play_tick
+  force_lattice_restart()
 end
 
 function enc(e, d)
@@ -260,26 +260,26 @@ function enc(e, d)
 end
 
 function record_event(sharpness_value)
-  -- avoid multiple events on a clock tick; they make no sense here
-  if #events == 0 or events[#events][1] ~= tick_pos then
+  -- avoid multiple seq_events on a clock tick; they make no sense here
+  if #seq_events == 0 or seq_events[#seq_events][1] ~= tick_pos then
     print('recording event @ '..tick_pos..' with value '..sharpness_value);
-    events[#events + 1] = { tick_pos, sharpness_value }
+    seq_events[#seq_events + 1] = { tick_pos, sharpness_value }
   else
     print("ALREADY HAVE AN EVENT HERE, CRANK THE TICKS")
   end
 end
 
-function strike(sharpness_value)
+function strike_engine(sharpness_value, from_seq)
+  print('striking engine')
   engine.sharpness(sharpness_value)
   engine.strike(1) 
-  GFX.create_strike(sharpness_value)
 end
 
 function play_it_safe()
-  if #events > 0 then
+  if #seq_events > 0 then
     start_playing()
   else
-    detach()
+    spokes.action = FN.noop
   end
 end
 
@@ -289,25 +289,34 @@ function redraw()
   speed = params:get('smash_ticks')
 
   GFX.up()
+  GFX.draw_pos('l', last_event_pos, tick_pos)
   GFX.draw_noise()
   GFX.draw_gain()
   GFX.draw_leak(leak)
   GFX.draw_sharpness(sharpness, side)
   GFX.draw_strikes(side)
-  --if #events > 0 and not recording and not armed then
+  --if #seq_events > 0 and not recording and not armed then
   if tick_pos then
-    GFX.draw_seq(events, last_event_pos, tick_pos, tick_length)
+    GFX.draw_seq(seq_events, last_event_pos, tick_pos, tick_length)
   end
   --end
-  GFX.draw_status(recording, armed, #events)
+  GFX.draw_status(recording, armed, #seq_events)
   GFX.draw_speed(speed)
+  GFX.draw_pos('r', last_event_pos, tick_pos)
   GFX.down()
+
+  -- infinitedigits capture technique
+  -- (use ffmpeg to collate frames into GIF
+  if capturing then
+    _norns.screen_export_png(string.format("/dev/shm/image%04d.png",img_idx)) 
+    img_idx=img_idx+1
+  end
 end
 
 function key(k, z)
   if z ~= 1 then return end
   if k == 2 then 
-    strike(sharpness)
+    events.strike.pub(sharpness, from_seq)
     if armed and not recording then 
       start_recording() 
     end
@@ -319,15 +328,15 @@ function key(k, z)
       stop_recording()
       play_it_safe()
     elseif armed then
-      disarm_recording()
+      armed = false
       play_it_safe()
     else
-      stop_playing()
-      arm_recording()
+      spokes.action = FN.noop
+      armed = true
     end
   end
 end
 
 function cleanup()
-  lettuce:destroy()
+  clk:destroy()
 end
