@@ -20,6 +20,7 @@ end
 
 function seq.handle_play_tick()
   if seq.tick_pos == seq.events[seq.next_event_pos][1] then
+    -- events is a global :|
     events.strike.pub(seq.events[seq.next_event_pos][2], true)
     seq.last_event_pos = seq.next_event_pos
     seq.next_event_pos = seq.next_event_pos % #seq.events + 1
@@ -33,6 +34,7 @@ function seq.handle_rec_tick()
 end
 
 function seq.start_recording()
+    -- events is a global :|
   events.rec_start.pub()
 
   -- reset counters
@@ -67,6 +69,7 @@ function seq.start_playing()
   print("started playing with "..#seq.events.." seq.events and "
     ..(seq.tick_length or "(nil)").." tick length")
 
+    -- events is a global :|
   events.play_start.pub()
 
   seq.spokes.action = seq.handle_play_tick
@@ -81,7 +84,7 @@ function seq.play_it_safe()
   end
 end
 
--- K3 handler (until it has other jobs)
+-- K3 handler (until K3 has other jobs)
 function seq.change_status()
   if seq.recording then
     seq.stop_recording()
@@ -103,6 +106,10 @@ function seq.record_event(sharpness_value)
   else
     print("ALREADY HAVE AN EVENT HERE, CRANK THE TICKS")
   end
+end
+
+function seq.set_speed(new_speed)
+  seq.spokes.division = 1/new_speed
 end
 
 return seq

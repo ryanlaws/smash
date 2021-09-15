@@ -13,15 +13,12 @@ tabutil = require('tabutil')
 GFX = include('SMASH/lib/gfx') -- lol but it won't update then :|
 FN = include('SMASH/lib/function') 
 seq = include('SMASH/lib/seq') 
+cfg = include('SMASH/lib/config') 
 
 engine.name = "StereoLpg"
 
 capturing = false
 img_idx = 0
-
--- so require() can load stuff from dust
--- i.e. require('SMASH/lib/gfx')
--- I kinda like this, maybe I wanna use this
 
 -- TODO
 -- PRIORITY
@@ -38,7 +35,6 @@ img_idx = 0
 -- - - - cutoff amount
 -- - - - consider slew
 -- - - - consider faster -> more open "screaming" a la 303
--- - - move seq stuff to own module
 -- NOT PRIORITY (after UI done maybe
 -- - config knob behaviors
 -- - - what does this even mean? like assign E2/E3?
@@ -52,16 +48,17 @@ function rerun()
   norns.script.load(norns.state.script)
 end
 
-
 function init_events()
   print('initializing events')
   events = {
     strike     = FN.make_pub('strike'),
     play_start = FN.make_pub('play'),
-    rec_start  = FN.make_pub('rec')
+    rec_start  = FN.make_pub('rec'),
+    speed_set  = FN.make_pub('set speed')
   }
 
   events.strike.sub(strike_engine)
+  events.speed_set.sub(seq.set_speed)
 end
 
 function init_gfx()
@@ -80,71 +77,12 @@ function init_gfx()
 end
 
 function init()
-  init_params()
   init_events()
   init_gfx()
 
+  cfg.init()
   seq.init()
   -- print(norns.state.script)
-end
-
-function init_params()
-  params:add_group("SMASH",9)
-
-  -- TODO: refactor. tooooo much boilerplate
-  params:add_control("smash_reso","resonance",
-    controlspec.new(0,1,'lin',0.05,0.2,'pewpew',0.05/1))
-  params:set_action("smash_reso",
-    function(reso)
-      engine.resonance(reso)
-    end)
-
-  params:add_control("smash_gain","gain",
-    controlspec.new(0.2,20,'exp',0.05,1,'OUCH',1/50))
-  params:set_action("smash_gain",
-    function(gain)
-      engine.gain(gain)
-    end)
-
-  params:add_separator()
-
-  params:add_control("smash_noise","noise",
-    controlspec.new(0.0001,1,'exp',0.001,0.001,'kiss',1/20),
-    FN.param_value)
-  params:set_action("smash_noise",
-    function(noise)
-      engine.noise(noise)
-    end)
-
-  params:add_control("smash_leak","leak",
-    controlspec.new(0.0001,1,'exp',0.001,0.001,'drips',1/20),
-    FN.param_value)
-  params:set_action("smash_leak",
-    function(leak)
-      engine.leak(leak)
-    end)
-
-  params:add_option("smash_hum","hum",{"50Hz","60Hz"},1)
-  params:set_action("smash_hum",
-    function(i)
-      engine.hum(({50,60})[i])
-    end)
-
-  params:add_separator()
-
-  params:add_option("smash_side","ears",{"left","both","right"},2)
-  params:set_action("smash_side",
-    function(i)
-      print ("side "..i)
-      engine.side(i - 2)
-    end)
-
-  params:add_control("smash_ticks", "ticks",
-    controlspec.new(1,96,'lin',1,48,'',1/96))
-  params:set_action("smash_ticks", 
-    function (new_speed)
-      seq.spokes.division = 1/new_speed
-    end)
 end
 
 function enc(e, d)
@@ -163,7 +101,6 @@ function strike_engine(sharpness_value, from_seq)
   engine.strike(1) 
 end
 
-
 function redraw()
   local leak = params:get('smash_leak')
   local side = params:get("smash_side")
@@ -175,11 +112,11 @@ function redraw()
   GFX.draw_leak(leak)
   GFX.draw_sharpness(sharpness, side)
   GFX.draw_strikes(side)
-  --if #seq.events > 0 and not recording and not armed then
+
   if seq.tick_pos then
     GFX.draw_seq(seq.events, seq.last_event_pos, seq.tick_pos, seq.tick_length)
   end
-  --end
+
   GFX.draw_status(seq.recording, seq.armed, #seq.events)
   GFX.draw_speed(speed)
   GFX.draw_pos(seq.last_event_pos, seq.tick_pos)
