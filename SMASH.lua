@@ -24,7 +24,7 @@ img_idx = 0
 -- end PNG stuff
 
 sharpness = 0.5 -- should maybe be a param
-
+meta = false
 
 -- TODO
 -- PRIORITY
@@ -49,10 +49,45 @@ sharpness = 0.5 -- should maybe be a param
 -- - overdub
 -- - crow (env? trig? gate?)
 
+-- | standard lifecycle stuff | --
+function init()
+  init_events()
+  init_gfx()
+
+  cfg.init()
+  seq.init()
+  -- print(norns.state.script)
+end
+
+function cleanup()
+  seq.clk:destroy()
+end
+
+function redraw()
+  GFX.redraw(sharpness, seq, meta)
+
+  -- infinitedigits capture technique
+  -- (use ffmpeg to collate frames into GIF
+  if capturing then
+    _norns.screen_export_png(string.format("/dev/shm/image%04d.png",img_idx)) 
+    img_idx=img_idx+1
+  end
+end
+
+
+-- | helpers | --
 function rerun()
   norns.script.load(norns.state.script)
 end
 
+function strike_engine(sharpness_value, from_seq)
+  print('striking engine')
+  engine.sharpness(sharpness_value)
+  engine.strike(1) 
+end
+
+
+-- | specific init(s) | --
 function init_events()
   print('initializing events')
   events = {
@@ -81,57 +116,47 @@ function init_gfx()
   events.rec_start.sub(GFX.reset_seq)
 end
 
-function init()
-  init_events()
-  init_gfx()
 
-  cfg.init()
-  seq.init()
-  -- print(norns.state.script)
+-- | controls | --
+function key(k, z)
+  if k == 1 then
+    meta = z == 1 and true or false
+    print('meta '..(meta and 'true' or 'false')) -- lol this feels wrong
+  elseif z ~= 1 then 
+    return 
+  end
+
+  if k == 2 then 
+    if meta then
+    else
+      events.strike.pub(sharpness, from_seq)
+      if seq.armed and not seq.recording then 
+        seq.start_recording() 
+      end
+      if seq.recording then 
+        seq.record_event(sharpness) 
+      end
+    end
+  elseif k == 3 then
+    if meta then
+    else
+      seq.change_status()
+    end
+  end
 end
 
 function enc(e, d)
   if e == 2 then
-    sharpness = math.min(math.max(sharpness + (d / 10), 0.1), 1)
-    engine.sharpness(sharpness)
-    print (sharpness)
+    if meta then
+    else
+      sharpness = math.min(math.max(sharpness + (d / 10), 0.1), 1)
+      engine.sharpness(sharpness)
+      print (sharpness)
+    end
   elseif e == 3 then
-    params:delta('smash_ticks', d)
-  end
-end
-
-function strike_engine(sharpness_value, from_seq)
-  print('striking engine')
-  engine.sharpness(sharpness_value)
-  engine.strike(1) 
-end
-
-function redraw()
-  GFX.redraw(sharpness, seq)
-
-  -- infinitedigits capture technique
-  -- (use ffmpeg to collate frames into GIF
-  if capturing then
-    _norns.screen_export_png(string.format("/dev/shm/image%04d.png",img_idx)) 
-    img_idx=img_idx+1
-  end
-end
-
-function key(k, z)
-  if z ~= 1 then return end
-  if k == 2 then 
-    events.strike.pub(sharpness, from_seq)
-    if seq.armed and not seq.recording then 
-      seq.start_recording() 
+    if meta then
+    else
+      params:delta('smash_ticks', d)
     end
-    if seq.recording then 
-      seq.record_event(sharpness) 
-    end
-  elseif k == 3 then
-    seq.change_status()
   end
-end
-
-function cleanup()
-  seq.clk:destroy()
 end

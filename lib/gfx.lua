@@ -42,7 +42,7 @@ function g.line(x1, y1, x2, y2, l)
 end
 
 -- main loop
-function g.redraw(sharpness, seq)
+function g.redraw(sharpness, seq, meta)
   -- params is global. feels a little dirty
   local leak = params:get('smash_leak')
   local side = params:get("smash_side")
@@ -57,12 +57,15 @@ function g.redraw(sharpness, seq)
   GFX.draw_strikes(side)
 
   -- all this seq stuff is kinda tacky, maybe clean up
+  -- what would Sandi Metz call this? inappropriate intimacy?
   if seq.tick_pos then
     GFX.draw_seq(seq.events, seq.last_event_pos, seq.tick_pos, seq.tick_length)
   end
 
   GFX.draw_status(seq.recording, seq.armed, #seq.events)
   GFX.draw_speed(speed)
+
+  -- debugging
   GFX.draw_pos(seq.last_event_pos, seq.tick_pos)
 
   screen.update()
