@@ -1,19 +1,16 @@
 local FN = include('SMASH/lib/function') 
 
 local g = {
-  leaks = {}
+  leaks = {},
+  ripples = {},
+  event_last_pos = 0,
+  add_ripple_q = FN.make_q()
 }
+
 -- some methods stolen from 
 -- northern-information/athenaeum/lib/graphics.lua
 
-local strike_sharpness = nil
-local strike_level = nil
-
-local event_last_pos = 0
-
-local add_ripple_q = FN.make_q()
-g.ripples = {}
-
+-- helpers
 function g.text(x, y, s, l)
   g.safe_level(l)
   screen.move(x, y)
@@ -31,24 +28,57 @@ function g.circle(x, y, r, l, filled)
   end
 end
 
-function g.up()
-  screen.clear()
+function g.safe_level(l)
+  screen.level(type(l) == 'number' and 
+    math.min(math.max(math.floor(l), 0), 15) or 
+    15)
 end
 
-function g.down()
+function g.line(x1, y1, x2, y2, l)
+  g.safe_level(l)
+  screen.move(x1, y1)
+  screen.line(x2, y2)
+  screen.stroke()
+end
+
+-- main loop
+function g.redraw(sharpness, seq)
+  -- params is global. feels a little dirty
+  local leak = params:get('smash_leak')
+  local side = params:get("smash_side")
+  local speed = params:get('smash_ticks')
+
+  screen.clear()
+  
+  GFX.draw_noise()
+  GFX.draw_gain()
+  GFX.draw_leak(leak)
+  GFX.draw_sharpness(sharpness, side)
+  GFX.draw_strikes(side)
+
+  -- all this seq stuff is kinda tacky, maybe clean up
+  if seq.tick_pos then
+    GFX.draw_seq(seq.events, seq.last_event_pos, seq.tick_pos, seq.tick_length)
+  end
+
+  GFX.draw_status(seq.recording, seq.armed, #seq.events)
+  GFX.draw_speed(speed)
+  GFX.draw_pos(seq.last_event_pos, seq.tick_pos)
+
   screen.update()
 end
 
+-- components
 function g.draw_strikes(side)
-  if strike_sharpness == nil then 
+  if g.strike_sharpness == nil then 
     return 
   end
 
-  g.draw_ears(strike_sharpness, strike_level, side)
+  g.draw_ears(g.strike_sharpness, g.strike_level, side)
 
-  strike_level = math.floor(strike_level * ((1 - strike_sharpness) ^ 3))
-  if strike_level < 1 then 
-    strike_sharpness = nil
+  g.strike_level = math.floor(g.strike_level * ((1 - g.strike_sharpness) ^ 3))
+  if g.strike_level < 1 then 
+    g.strike_sharpness = nil
   end
 end
 
@@ -77,19 +107,6 @@ function g.draw_sharpness(sharpness, side)
   g.draw_ears(sharpness, level, side)
 end
 
-function g.safe_level(l)
-  screen.level(type(l) == 'number' and 
-    math.min(math.max(math.floor(l), 0), 15) or 
-    15)
-end
-
-function g.line(x1, y1, x2, y2, l)
-  g.safe_level(l)
-  screen.move(x1, y1)
-  screen.line(x2, y2)
-  screen.stroke()
-end
-
 function g.draw_needle(tick_pos, tick_length)
   radians = (tick_pos / tick_length - 0.25) * 2 * math.pi
   g.circle(
@@ -100,11 +117,11 @@ end
 
 function g.reset_seq()
   print('(gfx) seq reset')
-  event_last_pos = 0
+  g.event_last_pos = 0
 end
 
 function g.add_event_ripple()
-  add_ripple_q.nq(function (pos, len)
+  g.add_ripple_q.nq(function (pos, len)
     print('adding ripple at '..pos..' of len '..len)
     pos = (pos + len - 1) % len / len
     print('calculated ripple at '..pos)
@@ -164,8 +181,8 @@ function g.draw_ripples()
   end
 end
 
+-- temp helper - DELETE ME
 function g.draw_pos(last_event_pos, tick_pos)
-  -- bullshit
   screen.aa(0)
   screen.font_face(2)
   screen.font_size(8)
@@ -173,7 +190,7 @@ function g.draw_pos(last_event_pos, tick_pos)
   screen.move(4, 8)
   screen.text('t '..(tick_pos or '(nil)'))
   screen.move(4, 16)
-  screen.text('elp '..(event_last_pos or '(nil)'))
+  screen.text('elp '..(g.event_last_pos or '(nil)'))
   screen.move(4, 24)
   screen.text('lep '..(last_event_pos or '(nil)'))
 
@@ -184,14 +201,14 @@ function g.draw_pos(last_event_pos, tick_pos)
 end
 
 function g.draw_seq(events, event_pos, tick_pos, tick_length)
-  g.draw_ngon(events, tick_length, event_last_pos)
+  g.draw_ngon(events, tick_length, g.event_last_pos)
   g.draw_needle(tick_pos - 1, tick_length)
 
-  while event_pos ~= event_last_pos do
-    event_last_pos = (event_last_pos ~= nil) and (event_last_pos % #events + 1) or 1
+  while event_pos ~= g.event_last_pos do
+    g.event_last_pos = (g.event_last_pos ~= nil) and (g.event_last_pos % #events + 1) or 1
   end
 
-  add_ripple_q.fire(tick_pos, tick_length)
+  g.add_ripple_q.fire(tick_pos, tick_length)
 
   g.draw_ripples()
 end
@@ -298,8 +315,8 @@ function g.draw_gain()
 end
 
 function g.strike(sharpness, from_seq)
-  strike_sharpness = sharpness
-  strike_level = 15
+  g.strike_sharpness = sharpness
+  g.strike_level = 15
 
   if from_seq then
     --g.add_event_ripple((tick_pos + tick_length - 1) % tick_length / tick_length)

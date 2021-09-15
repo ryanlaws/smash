@@ -9,16 +9,22 @@
 
 lattice = require('lattice')
 tabutil = require('tabutil')
--- GFX = require('SMASH/lib/gfx') -- always require() - easy to move later
-GFX = include('SMASH/lib/gfx') -- lol but it won't update then :|
+
+-- might be cool to require() these but that caches until restart :|
 FN = include('SMASH/lib/function') 
+GFX = include('SMASH/lib/gfx')
 seq = include('SMASH/lib/seq') 
 cfg = include('SMASH/lib/config') 
 
 engine.name = "StereoLpg"
 
+-- PNG stuff
 capturing = false
 img_idx = 0
+-- end PNG stuff
+
+sharpness = 0.5 -- should maybe be a param
+
 
 -- TODO
 -- PRIORITY
@@ -36,13 +42,12 @@ img_idx = 0
 -- - - - consider slew
 -- - - - consider faster -> more open "screaming" a la 303
 -- NOT PRIORITY (after UI done maybe
+-- - centralize globals (params, clock, etc.)
 -- - config knob behaviors
 -- - - what does this even mean? like assign E2/E3?
 -- - do that rhythm trigger thing wm wanted I guess
 -- - overdub
 -- - crow (env? trig? gate?)
-
-sharpness = 0.5
 
 function rerun()
   norns.script.load(norns.state.script)
@@ -102,25 +107,7 @@ function strike_engine(sharpness_value, from_seq)
 end
 
 function redraw()
-  local leak = params:get('smash_leak')
-  local side = params:get("smash_side")
-  local speed = params:get('smash_ticks')
-
-  GFX.up()
-  GFX.draw_noise()
-  GFX.draw_gain()
-  GFX.draw_leak(leak)
-  GFX.draw_sharpness(sharpness, side)
-  GFX.draw_strikes(side)
-
-  if seq.tick_pos then
-    GFX.draw_seq(seq.events, seq.last_event_pos, seq.tick_pos, seq.tick_length)
-  end
-
-  GFX.draw_status(seq.recording, seq.armed, #seq.events)
-  GFX.draw_speed(speed)
-  GFX.draw_pos(seq.last_event_pos, seq.tick_pos)
-  GFX.down()
+  GFX.redraw(sharpness, seq)
 
   -- infinitedigits capture technique
   -- (use ffmpeg to collate frames into GIF
