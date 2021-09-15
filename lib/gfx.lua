@@ -164,22 +164,18 @@ function g.draw_ripples()
   end
 end
 
-function g.draw_pos(where, last_event_pos, tick_pos)
+function g.draw_pos(last_event_pos, tick_pos)
   -- bullshit
   screen.aa(0)
   screen.font_face(2)
   screen.font_size(8)
 
-  if last_event_pos == nil then last_event_pos = '(nil)' end
-  if event_last_pos == nil then event_last_pos = '(nil)' end
-  if tick_pos == nil then tick_pos = '(nil)' end
-  if where == 'l' then
-    screen.move(4, 8)
-    screen.text('t '..tick_pos..', elp '..event_last_pos..', lep '..last_event_pos)
-  elseif where == 'r' then
-    screen.move(124, 16)
-    screen.text_right('t '..tick_pos..', elp '..event_last_pos..', lep '..last_event_pos)
-  end
+  screen.move(4, 8)
+  screen.text('t '..(tick_pos or '(nil)'))
+  screen.move(4, 16)
+  screen.text('elp '..(event_last_pos or '(nil)'))
+  screen.move(4, 24)
+  screen.text('lep '..(last_event_pos or '(nil)'))
 
   -- reset
   screen.aa(0)
