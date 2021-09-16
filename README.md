@@ -29,7 +29,13 @@ Try any of the following.
 - Turn up the leak (more slowly)
 - Turn up the gain (**VERY** slowly)
 
-## My encoder movements aren't being recorded.
+## Encoder movements aren't being recorded.
 Only E2 is recorded. 
 It is only recorded during the record phase. 
-You may change the E2 control during recording and record that, but only one control will be recorded per event.
+You can change the E2 control during recording and record a different control, but only one control/value will be recorded per SMASH.
+
+## It's too noisy.
+Turn down noise, leak, and/or gain.
+
+## I have no idea what's going on
+See PARAMETERS menu. 
