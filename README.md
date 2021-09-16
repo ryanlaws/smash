@@ -4,10 +4,9 @@
 
 Two-button stereo LPG / sequencer with extras
 
-# !WARNING!
+# 🙉🙉🙉WARNING!🙉🙉🙉
 
 Can get **VERY LOUD!!!** Protect your ears, ape!
-🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉
 
 # Controls
 
@@ -35,8 +34,8 @@ Try any of the following.
 
 ## Encoder movements aren't being recorded.
 Only E2 is recorded. 
-It is only recorded during the record phase. 
-You can change the E2 control during recording and record a different control, but only one control/value will be recorded per SMASH.
+E2 is only recorded during the record phase. 
+You can change E2's control while recording, but only one control/value is recorded per SMASH.
 
 ## It's too noisy.
 Decrease resonance, noise, leak, and/or gain.
