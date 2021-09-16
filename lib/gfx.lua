@@ -4,19 +4,42 @@ local g = {
   leaks = {},
   ripples = {},
   event_last_pos = 0,
-  add_ripple_q = FN.make_q()
+  add_ripple_q = FN.make_q(),
+  menu_level = 0
 }
 
 -- some methods stolen from 
 -- northern-information/athenaeum/lib/graphics.lua
 
 -- helpers
-function g.text(x, y, s, l)
+function g.text(x, y, s, l, right)
   g.safe_level(l)
   screen.move(x, y)
-  screen.text_right(s)
+  if right then
+    screen.text_right(s)
+  else
+    screen.text(s)
+  end
   screen.stroke()
 end
+
+function g.shadow_text(x, y, s, l, right)
+  local t = right and screen.text_right or screen.text
+
+  -- shadow
+  screen.level(0)
+  screen.move(x - 1, y) t(s)
+  screen.move(x + 1, y) t(s)
+  screen.move(x, y - 1) t(s)                
+  screen.move(x, y + 1) t(s)
+  screen.stroke()
+
+  g.safe_level(l)
+  screen.move(x, y)
+  t(s)
+  screen.stroke()
+end
+
 
 function g.circle(x, y, r, l, filled)
   screen.level(math.floor(l) or 15)
@@ -42,7 +65,7 @@ function g.line(x1, y1, x2, y2, l)
 end
 
 -- main loop
-function g.redraw(sharpness, seq, meta)
+function g.redraw(sharpness, seq, meta, menu_items, e2option, e3option)
   -- params is global. feels a little dirty
   local leak = params:get('smash_leak')
   local side = params:get("smash_side")
@@ -50,23 +73,26 @@ function g.redraw(sharpness, seq, meta)
 
   screen.clear()
   
-  GFX.draw_noise()
-  GFX.draw_gain()
-  GFX.draw_leak(leak)
-  GFX.draw_sharpness(sharpness, side)
-  GFX.draw_strikes(side)
+  g.draw_noise()
+  g.draw_gain()
+  g.draw_leak(leak)
+  g.draw_sharpness(sharpness, side)
+  g.draw_strikes(side)
 
   -- all this seq stuff is kinda tacky, maybe clean up
   -- what would Sandi Metz call this? inappropriate intimacy?
   if seq.tick_pos then
-    GFX.draw_seq(seq.events, seq.last_event_pos, seq.tick_pos, seq.tick_length)
+    g.draw_seq(seq.events, seq.last_event_pos, seq.tick_pos, seq.tick_length)
   end
 
-  GFX.draw_status(seq.recording, seq.armed, #seq.events)
-  GFX.draw_speed(speed)
+  g.draw_status(seq.recording, seq.armed, #seq.events)
+  g.draw_speed(speed)
+
+
+  g.draw_menu(meta, menu_items, e2option, e3option)
 
   -- debugging
-  GFX.draw_pos(seq.last_event_pos, seq.tick_pos)
+  --g.draw_pos(seq.last_event_pos, seq.tick_pos)
 
   screen.update()
 end
@@ -239,10 +265,13 @@ function g.draw_status(recording, armed, event_count)
   screen.stroke()
 end
 
-function g.draw_speed(tempo)
+function g.draw_speed(speed)
+  screen.font_face(2)
+  screen.font_size(16)
+
   g.safe_level(8)
   screen.move(123, 59)
-  screen.text_right(tempo)
+  screen.text_right(speed)
   screen.stroke()
 end
 
@@ -324,6 +353,31 @@ function g.strike(sharpness, from_seq)
   if from_seq then
     --g.add_event_ripple((tick_pos + tick_length - 1) % tick_length / tick_length)
     g.add_event_ripple()
+  end
+end
+
+function g.draw_menu(meta, menu_items, e2option, e3option) 
+  if not meta then
+    if g.menu_level == 0 then 
+      return 
+    else
+      g.menu_level = math.max(g.menu_level - 1, 0) 
+    end
+  elseif meta and g.menu_level < 5 then
+    g.menu_level = math.min(g.menu_level + 2, 5) 
+  end
+
+  screen.font_face(1)
+  screen.font_size(8)
+
+  for i = 1, #menu_items[1] do
+    g.shadow_text(4, 8 * (i - 1) + 8, menu_items[1][i], 
+      (i == e2option) and 15 or 4 * g.menu_level / 5)
+  end
+
+  for i = 1, #menu_items[2] do
+    g.shadow_text(124, 8 * (i - 1) + 8, menu_items[2][i], 
+      (i == e3option) and 15 or 4 * g.menu_level / 5, true)
   end
 end
 

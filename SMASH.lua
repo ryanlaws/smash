@@ -64,7 +64,9 @@ function cleanup()
 end
 
 function redraw()
-  GFX.redraw(sharpness, seq, meta)
+  GFX.redraw(sharpness, seq, meta, 
+    { cfg.e2options, cfg.e3options }, 
+    params:get("smash_e2"), params:get("smash_e3"))
 
   -- infinitedigits capture technique
   -- (use ffmpeg to collate frames into GIF
@@ -118,6 +120,36 @@ end
 
 
 -- | controls | --
+function set_ctrl(ctrl, d)
+  print('ctrl "'..ctrl..'" changed by '..d)
+
+  -- recordable
+  if ctrl == 'sharpness' then
+    sharpness = math.min(math.max(sharpness + (d / 10), 0.1), 1)
+    engine.sharpness(sharpness)
+  elseif ctrl == 'resonance' then
+    params:delta('smash_reso', d)
+  elseif ctrl == 'noise' then
+    params:delta('smash_noise', d)
+  elseif ctrl == 'side' then
+    params:delta('smash_side', d)
+
+  -- non-recordable
+  elseif ctrl == 'seq speed' then
+    params:delta('smash_ticks', d)
+  elseif ctrl == 'seq length' then
+    print('seq len not implemented')
+  elseif ctrl == 'leak' then
+    params:delta('smash_leak', d)
+  elseif ctrl == 'lag' then
+    print('lag not implemented')
+  elseif ctrl == 'gain' then
+    params:delta('smash_gain', d)
+  end
+end
+
+
+-- | controls | --
 function key(k, z)
   if k == 1 then
     meta = z == 1 and true or false
@@ -148,15 +180,15 @@ end
 function enc(e, d)
   if e == 2 then
     if meta then
+      params:delta('smash_e2', math.min(math.max(-1, d), 1))
     else
-      sharpness = math.min(math.max(sharpness + (d / 10), 0.1), 1)
-      engine.sharpness(sharpness)
-      print (sharpness)
+      set_ctrl(cfg.e2options[params:get('smash_e2')], d)
     end
   elseif e == 3 then
     if meta then
+      params:delta('smash_e3', math.min(math.max(-1, d), 1))
     else
-      params:delta('smash_ticks', d)
+      set_ctrl(cfg.e3options[params:get('smash_e3')], d)
     end
   end
 end

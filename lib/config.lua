@@ -1,8 +1,10 @@
-local c = {}
+local c = {
+  e2options = {"sharpness","resonance","noise","side","h4ck"},
+  e3options = {"seq speed","seq length","leak","lag", "gain"}
+}
 
 function c.init()
-  params:add_group("SMASH",9)
-
+  params:add_group("SMASH", 11)
   -- TODO: refactor. tooooo much boilerplate
   params:add_control("smash_reso","resonance",
     controlspec.new(0,1,'lin',0.05,0.2,'pewpew',0.05/1))
@@ -42,7 +44,7 @@ function c.init()
       engine.hum(({50,60})[i])
     end)
 
-  params:add_separator()
+  params:add_separator() -- 
 
   params:add_option("smash_side","ears",{"left","both","right"},2)
   params:set_action("smash_side",
@@ -54,6 +56,11 @@ function c.init()
   params:add_control("smash_ticks", "ticks",
     controlspec.new(1,96,'lin',1,48,'',1/96))
   params:set_action("smash_ticks", events.speed_set.pub)
+
+  params:add_separator() -- encoders
+
+  params:add_option("smash_e2","E2",c.e2options,1)
+  params:add_option("smash_e3","E3",c.e3options,1)
 end
 
 return c
