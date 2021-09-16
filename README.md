@@ -7,6 +7,7 @@ Two-button stereo LPG / sequencer with extras
 # !WARNING!
 
 Can get **VERY LOUD!!!** Protect your ears, ape!
+🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉🙉
 
 # Controls
 
