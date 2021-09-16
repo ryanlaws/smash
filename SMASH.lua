@@ -28,23 +28,15 @@ meta = false
 
 -- TODO
 -- PRIORITY
--- - params
--- - - fix resonance (liiittle too loud)
--- - - - should baaarely self-osc (0.925) at max
--- - synth
--- - - bring min freq down a bit
--- - - bring max decay up a bit
--- - - bring min decay down a bit
--- - etc.
--- - - tweak sharpness
--- - - - vol vs. cutoff decay
--- - - - cutoff amount
--- - - - consider slew
--- - - - consider faster -> more open "screaming" a la 303
+-- - make filter work as a kick drum 
+-- - chill out HACK (more karplus, more lag, more feedback, less echo)
+-- - implement tick length
+-- - make sure params are complete & look OK
+-- - gfx
+-- - - reso
+-- - - hack
+-- - - lag
 -- NOT PRIORITY (after UI done maybe
--- - centralize globals (params, clock, etc.)
--- - config knob behaviors
--- - - what does this even mean? like assign E2/E3?
 -- - do that rhythm trigger thing wm wanted I guess
 -- - overdub
 -- - crow (env? trig? gate?)
@@ -82,9 +74,25 @@ function rerun()
   norns.script.load(norns.state.script)
 end
 
-function strike_engine(sharpness_value, from_seq)
+function strike_engine(ctrl, value, from_seq)
   print('striking engine')
-  engine.sharpness(sharpness_value)
+
+  if from_seq then
+    set_ctrl(ctrl, value)
+  end
+
+  if ctrl == 'sharpness' then
+    engine.sharpness(value)
+  elseif ctrl == 'resonance' then
+    engine.resonance(value)
+  elseif ctrl == 'noise' then
+    engine.noise(value)
+  elseif ctrl == 'side' then
+    engine.side(value - 2)
+  elseif ctrl == 'h4ck' then
+    engine.hack(value)
+  end
+
   engine.strike(1) 
 end
 
@@ -96,7 +104,8 @@ function init_events()
     strike     = FN.make_pub('strike'),
     play_start = FN.make_pub('play'),
     rec_start  = FN.make_pub('rec'),
-    speed_set  = FN.make_pub('set speed')
+    speed_set  = FN.make_pub('set speed'),
+    sharpness_set  = FN.make_pub('set sharpness')
   }
 
   events.strike.sub(strike_engine)
@@ -120,12 +129,14 @@ end
 
 
 -- | controls | --
-function set_ctrl(ctrl, d)
+function change_ctrl(ctrl, d)
   print('ctrl "'..ctrl..'" changed by '..d)
 
   -- recordable
+  -- TODO: set recorded param + value
   if ctrl == 'sharpness' then
     sharpness = math.min(math.max(sharpness + (d / 10), 0.1), 1)
+    GFX.sharpness = sharpness
     engine.sharpness(sharpness)
   elseif ctrl == 'resonance' then
     params:delta('smash_reso', d)
@@ -133,6 +144,8 @@ function set_ctrl(ctrl, d)
     params:delta('smash_noise', d)
   elseif ctrl == 'side' then
     params:delta('smash_side', d)
+  elseif ctrl == 'h4ck' then
+    params:delta('smash_hack', d)
 
   -- non-recordable
   elseif ctrl == 'seq speed' then
@@ -142,9 +155,44 @@ function set_ctrl(ctrl, d)
   elseif ctrl == 'leak' then
     params:delta('smash_leak', d)
   elseif ctrl == 'lag' then
-    print('lag not implemented')
+    params:delta('smash_lag', d)
   elseif ctrl == 'gain' then
     params:delta('smash_gain', d)
+  end
+end
+
+function set_ctrl(ctrl, value)
+  print('ctrl "'..ctrl..'" set to '..value)
+
+  -- recordable
+  -- TODO: set recorded param + value
+  if ctrl == 'sharpness' then
+    sharpness = value
+    GFX.sharpness = sharpness
+    --engine.sharpness(sharpness)
+    -- engine.sharpness(sharpness)
+  elseif ctrl == 'resonance' then
+    params:set('smash_reso', value)
+  elseif ctrl == 'noise' then
+    params:set('smash_noise', value)
+  elseif ctrl == 'side' then
+    params:set('smash_side', value)
+  elseif ctrl == 'h4ck' then
+    params:set('smash_hack', value)
+  end
+end
+
+function ctrl_value(ctrl)
+  if ctrl == 'sharpness' then
+    return sharpness
+  elseif ctrl == 'resonance' then
+    return params:get('smash_reso')
+  elseif ctrl == 'noise' then
+    return params:get('smash_noise')
+  elseif ctrl == 'side' then
+    return params:get('smash_side')
+  elseif ctrl == 'h4ck' then
+    return params:get('smash_hack')
   end
 end
 
@@ -161,12 +209,13 @@ function key(k, z)
   if k == 2 then 
     if meta then
     else
-      events.strike.pub(sharpness, from_seq)
+      local ctrl = cfg.e2options[params:get('smash_e2')]
+      events.strike.pub(ctrl, ctrl_value(ctrl), from_seq)
       if seq.armed and not seq.recording then 
         seq.start_recording() 
       end
       if seq.recording then 
-        seq.record_event(sharpness) 
+        seq.record_event(ctrl, ctrl_value(ctrl)) 
       end
     end
   elseif k == 3 then
@@ -182,13 +231,13 @@ function enc(e, d)
     if meta then
       params:delta('smash_e2', math.min(math.max(-1, d), 1))
     else
-      set_ctrl(cfg.e2options[params:get('smash_e2')], d)
+      change_ctrl(cfg.e2options[params:get('smash_e2')], d)
     end
   elseif e == 3 then
     if meta then
       params:delta('smash_e3', math.min(math.max(-1, d), 1))
     else
-      set_ctrl(cfg.e3options[params:get('smash_e3')], d)
+      change_ctrl(cfg.e3options[params:get('smash_e3')], d)
     end
   end
 end

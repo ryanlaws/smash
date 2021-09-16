@@ -5,7 +5,8 @@ local g = {
   ripples = {},
   event_last_pos = 0,
   add_ripple_q = FN.make_q(),
-  menu_level = 0
+  menu_level = 0,
+  sharpness = 0.5
 }
 
 -- some methods stolen from 
@@ -151,9 +152,9 @@ end
 
 function g.add_event_ripple()
   g.add_ripple_q.nq(function (pos, len)
-    print('adding ripple at '..pos..' of len '..len)
+    -- print('adding ripple at '..pos..' of len '..len)
     pos = (pos + len - 1) % len / len
-    print('calculated ripple at '..pos)
+    -- print('calculated ripple at '..pos)
     g.ripples[#g.ripples+1] = { pos=pos, size=1, level=math.random(6, 10) }
   end)
 end
@@ -346,8 +347,12 @@ function g.draw_gain()
   screen.stroke()
 end
 
-function g.strike(sharpness, from_seq)
-  g.strike_sharpness = sharpness
+function g.strike(ctrl, value, from_seq)
+  if ctrl == 'sharpness' then
+    g.strike_sharpness = value
+  else
+    g.strike_sharpness = g.sharpness
+  end
   g.strike_level = 15
 
   if from_seq then

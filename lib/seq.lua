@@ -19,9 +19,11 @@ function seq.force_lattice_restart()
 end
 
 function seq.handle_play_tick()
-  if seq.tick_pos == seq.events[seq.next_event_pos][1] then
+  local event = seq.events[seq.next_event_pos]
+  if seq.tick_pos == event[1] then
     -- events is a global :|
-    events.strike.pub(seq.events[seq.next_event_pos][2], true)
+    print('event '..event[2]..' '..event[3])
+    events.strike.pub(event[2], event[3], true)
     seq.last_event_pos = seq.next_event_pos
     seq.next_event_pos = seq.next_event_pos % #seq.events + 1
   end
@@ -98,11 +100,11 @@ function seq.change_status()
   end
 end
 
-function seq.record_event(sharpness_value)
+function seq.record_event(ctrl, value)
   -- avoid multiple seq.events on a clock tick; they make no sense here
   if #seq.events == 0 or seq.events[#seq.events][1] ~= seq.tick_pos then
-    print('recording event @ '..seq.tick_pos..' with value '..sharpness_value);
-    seq.events[#seq.events + 1] = { seq.tick_pos, sharpness_value }
+    print('recording event @ '..seq.tick_pos..' with ctrl '..ctrl..' @ '..value);
+    seq.events[#seq.events + 1] = { seq.tick_pos, ctrl, value }
   else
     print("ALREADY HAVE AN EVENT HERE, CRANK THE TICKS")
   end

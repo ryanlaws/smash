@@ -51,7 +51,7 @@ function fn.make_pub(name)
   end
 
   function p.pub(...)
-    if name then print('publishing '..name) end
+    --if name then print('publishing '..name) end
     for i = 1, #p.subs do
       p.subs[i](...)
     end

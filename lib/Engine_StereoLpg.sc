@@ -10,10 +10,10 @@ Engine_StereoLpg : CroneEngine {
       * [ ] delay (influenced by strike times) - tiny buffer like a BBD
       * [ ] configurable min/max cutoff
       * [ ] configurable min/max decay
-      * [ ] slews
     */
     synth = { | t_strike=0, sharpness=1, side=0,
-      leak=0.001, noise=0.001, hum=50, gain=1.05, resonance=0.1, lag=1 |
+      leak=0.001, noise=0.001, hum=50, gain=1.05, 
+      resonance=0.1, lag=0.1, hack=0|
       var ears = SoundIn.ar([0, 1]);
       var sides = [
         ears[[0,0]],
@@ -21,12 +21,13 @@ Engine_StereoLpg : CroneEngine {
         ears[[1,1]]
       ];
 
-      var decay, volume, env, freq, gated, leaked;
+      var decay, volume, env, freq, gated, leaked, out;
       // LAG
       noise = noise.lag(lag);
       gain = gain.lag(lag);
       resonance = resonance.lag(lag);
-      leak = leak.lag(lag);
+      leak = leak.lag(lag.max(0.1));
+      hack = hack.lag(lag);
 
       decay = (1 - sharpness) * 0.8 + 0.2 ** 2 * 1.5;
       volume = sharpness / 2 + 0.5;
@@ -45,7 +46,11 @@ Engine_StereoLpg : CroneEngine {
       gated = gated * (env ** 0.5);
       leaked = (side / 2 + noise) * leak;
 
-      (gated + leaked * gain).tanh;
+      hack = DelayN.ar(LocalIn.ar(2), 1, hack * 0.2, hack.max(-0.99).min(0.99));
+
+      out = (hack + gated + leaked).tanh;
+      LocalOut.ar(out);
+      out;
     }.play;
 
     this.addCommand("strike","f",{synth.set(\t_strike,1)});
@@ -59,6 +64,8 @@ Engine_StereoLpg : CroneEngine {
     });
     this.addCommand("gain","f",{|msg|synth.set(\gain,msg[1])});
     this.addCommand("resonance","f",{|msg|synth.set(\resonance,msg[1])});
+    this.addCommand("hack","f",{|msg|synth.set(\hack,msg[1])});
+    this.addCommand("lag","f",{|msg|synth.set(\lag,msg[1])});
   }
 
   free {
