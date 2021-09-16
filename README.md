@@ -10,17 +10,17 @@ Can get **VERY LOUD!!!** Protect your ears, ape!
 
 # Controls
 
-K2 = **SMASH**
+| Control | Action |
+|---------|--------|
+| **K3** | Arm/play |
+| **K1** + **E2** | Select **E2** action |
+| **K1** + **E3** | Select **E3** action |
+| **E2** | Control something (default *sharpness*) |
+| **E3** | Control something else (default *sequencer speed*) |
+|---------|--------|
 
-K3 = arm/play
 
-K1 + E2 = select E2 control
 
-K1 + E3 = select E3 control
-
-E2 = control something
-
-E3 = control something else
 
 # Troubleshooting
 
