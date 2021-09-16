@@ -12,7 +12,8 @@ Can get **VERY LOUD!!!** Protect your ears, ape!
 
 | Control | Action |
 |---------|--------|
-| **K3** | Arm/play |
+| **K2** | 💥SMASH 💥|
+| **K3** | Arm / Play |
 | **K1** + **E2** | Select **E2** action |
 | **K1** + **E3** | Select **E3** action |
 | **E2** | Control something (default *sharpness*) |
