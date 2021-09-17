@@ -113,7 +113,11 @@ function g.draw_strikes(side)
 end
 
 function g.draw_ear(pos, size, level)
+  local resonance = params:get('smash_reso')
   g.circle(pos, 32, size, level)
+  x1, x2 = pos + math.random(-1, 2), pos + math.random(-1, 2)
+  g.line(x1, 32 - (resonance * 32), x2, 32 + (resonance * 32), level)
+  g.line(x1, 32 - (resonance * 32), x2, 32 + (resonance * 32), level)
 end
 
 function g.draw_ears(sharpness, level, side)
