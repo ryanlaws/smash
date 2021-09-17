@@ -1,10 +1,10 @@
 local c = {
   e2options = {"sharpness","resonance","noise","side","h4ck"},
-  e3options = {"seq speed","seq length","leak","lag", "gain"}
+  e3options = {"seq speed",--[["seq length",--]]"leak","lag", "gain"}
 }
 
 function c.init()
-  params:add_group("SMASH", 11)
+  params:add_group("SMASH", 14)
   -- TODO: refactor. tooooo much boilerplate
   params:add_control("smash_reso","resonance",
     controlspec.new(0,1,'lin',0.05,0.2,'pewpew',0.05/1))

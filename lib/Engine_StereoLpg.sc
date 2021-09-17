@@ -33,7 +33,7 @@ Engine_StereoLpg : CroneEngine {
 
       hi = 87 * (1 - (resonance * 0.4));
       lo = 120 * (1.2 - ((1.1 - sharpness) ** 0.03));
-      decay = (1 - sharpness) * 0.8 + 0.2 ** 1.7 * 1.75;
+      decay = (1 - sharpness) * 0.8 + 0.2 ** 1.7 * 2;
       volume = sharpness / 2 + 0.5;
       env = Env.perc(0.01, decay, volume, -6);
       env = EnvGen.kr(env, t_strike);
