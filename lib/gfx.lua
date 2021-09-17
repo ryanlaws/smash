@@ -6,13 +6,19 @@ local g = {
   event_last_pos = 0,
   add_ripple_q = FN.make_q(),
   menu_level = 0,
-  sharpness = 0.5
+  sharpness = 0.5,
+  lag_str = '.',
+  lag_pos = 0,
+  hack_font = 64,
+  hack_font_size = 8,
+  hack_text = '',
+  hack_counter = 0
 }
 
--- some methods stolen from 
+-- some methods stolen/adapted from 
 -- northern-information/athenaeum/lib/graphics.lua
 
--- helpers
+-- | helpers | --
 function g.text(x, y, s, l, right)
   g.safe_level(l)
   screen.move(x, y)
@@ -24,8 +30,11 @@ function g.text(x, y, s, l, right)
   screen.stroke()
 end
 
-function g.shadow_text(x, y, s, l, right)
-  local t = right and screen.text_right or screen.text
+function g.shadow_text(x, y, s, l, pos)
+  if not s or s == '' then return end
+  local t = (pos == 'right') and screen.text_right 
+    or (pos == 'center') and screen.text_center 
+    or screen.text
 
   -- shadow
   screen.level(0)
@@ -40,7 +49,6 @@ function g.shadow_text(x, y, s, l, right)
   t(s)
   screen.stroke()
 end
-
 
 function g.circle(x, y, r, l, filled)
   screen.level(math.floor(l) or 15)
@@ -65,12 +73,24 @@ function g.line(x1, y1, x2, y2, l)
   screen.stroke()
 end
 
--- main loop
+function g.dots(size) -- more a string helper really
+  local str = '.'
+  while string.len(str) < size do
+    str = str .. '.'
+  end
+  return str
+end
+
+
+-- | main loop | -- 
 function g.redraw(sharpness, seq, meta, menu_items, e2option, e3option)
   -- params is global. feels a little dirty
+  -- I think params is an OK global tho
   local leak = params:get('smash_leak')
   local side = params:get("smash_side")
   local speed = params:get('smash_ticks')
+  local lag = params:get("smash_lag")
+  local hack = params:get("smash_hack")
 
   screen.clear()
   
@@ -82,23 +102,24 @@ function g.redraw(sharpness, seq, meta, menu_items, e2option, e3option)
 
   -- all this seq stuff is kinda tacky, maybe clean up
   -- what would Sandi Metz call this? inappropriate intimacy?
+
   if seq.tick_pos then
     g.draw_seq(seq.events, seq.last_event_pos, seq.tick_pos, seq.tick_length)
   end
 
+  g.draw_hack(hack)
+  g.draw_lag(lag)
+
   g.draw_status(seq.recording, seq.armed, #seq.events)
   g.draw_speed(speed)
 
-
   g.draw_menu(meta, menu_items, e2option, e3option)
-
-  -- debugging
-  --g.draw_pos(seq.last_event_pos, seq.tick_pos)
 
   screen.update()
 end
 
--- components
+
+-- | components | -- 
 function g.draw_strikes(side)
   if g.strike_sharpness == nil then 
     return 
@@ -156,9 +177,7 @@ end
 
 function g.add_event_ripple()
   g.add_ripple_q.nq(function (pos, len)
-    -- print('adding ripple at '..pos..' of len '..len)
     pos = (pos + len - 1) % len / len
-    -- print('calculated ripple at '..pos)
     g.ripples[#g.ripples+1] = { pos=pos, size=1, level=math.random(6, 10) }
   end)
 end
@@ -215,25 +234,6 @@ function g.draw_ripples()
   end
 end
 
--- temp helper - DELETE ME
-function g.draw_pos(last_event_pos, tick_pos)
-  screen.aa(0)
-  screen.font_face(2)
-  screen.font_size(8)
-
-  screen.move(4, 8)
-  screen.text('t '..(tick_pos or '(nil)'))
-  screen.move(4, 16)
-  screen.text('elp '..(g.event_last_pos or '(nil)'))
-  screen.move(4, 24)
-  screen.text('lep '..(last_event_pos or '(nil)'))
-
-  -- reset
-  screen.aa(0)
-  screen.font_face(2)
-  screen.font_size(16)
-end
-
 function g.draw_seq(events, event_pos, tick_pos, tick_length)
   g.draw_ngon(events, tick_length, g.event_last_pos)
   g.draw_needle(tick_pos - 1, tick_length)
@@ -257,14 +257,14 @@ function g.draw_status(recording, armed, event_count)
   if not armed and not recording and event_count == 0 then
     -- nothing happened yet
   elseif armed then
-    g.circle(9, 56, 4, 8, false)
+    g.circle(10, 56, 4, 8, false)
   elseif recording then
-    g.circle(9, 56, 4, 8, true)
+    g.circle(10, 56, 4, 8, true)
   elseif event_count > 0 then
     screen.level(8)
-    screen.move(5, 52)
-    screen.line(14, 56)
-    screen.line(5, 60)
+    screen.move(6, 52)
+    screen.line(15, 56)
+    screen.line(6, 60)
     screen.fill()
   end
   screen.stroke()
@@ -274,10 +274,7 @@ function g.draw_speed(speed)
   screen.font_face(2)
   screen.font_size(16)
 
-  g.safe_level(8)
-  screen.move(123, 59)
-  screen.text_right(speed)
-  screen.stroke()
+  g.shadow_text(124, 60, speed, 8, 'right')
 end
 
 function g.add_new_leak()
@@ -360,8 +357,7 @@ function g.strike(ctrl, value, from_seq)
   g.strike_level = 15
 
   if from_seq then
-    --g.add_event_ripple((tick_pos + tick_length - 1) % tick_length / tick_length)
-    g.add_event_ripple()
+    g.add_event_ripple() -- too clockwise at fast speeds. need event pos
   end
 end
 
@@ -386,8 +382,43 @@ function g.draw_menu(meta, menu_items, e2option, e3option)
 
   for i = 1, #menu_items[2] do
     g.shadow_text(124, 8 * (i - 1) + 8, menu_items[2][i], 
-      (i == e3option) and 15 or 4 * g.menu_level / 5, true)
+      (i == e3option) and 15 or 4 * g.menu_level / 5, 'right')
   end
+end
+
+function g.draw_hack(hack)
+  --if hack == 0 then return end
+  local hack_digit
+  if g.hack_counter == 0 then
+    g.hack_text = ''
+    for i = 1, 11 do
+      hack_digit = math.random(0, math.ceil(hack / 0.95 * 15))
+      if hack_digit == 1 then
+        g.hack_text = g.hack_text .. "I"
+      elseif hack_digit > 15 then
+        g.hack_text = g.hack_text .. "X"
+      else
+        g.hack_text = g.hack_text .. string.format('%x', hack_digit)
+      end
+    end
+  end
+  screen.font_face(g.hack_font)
+  screen.font_size(g.hack_font_size)
+  g.shadow_text(63, 61, g.hack_text, 1, 'center')
+  g.hack_counter = (g.hack_counter + 1) % 2
+end
+
+function g.draw_lag(lag)
+  screen.font_face(2)
+  screen.font_size(8)
+
+  local max_dots = 43
+
+  local lagged = ((g.lag_pos + max_dots - 1 - math.ceil(lag * 10)) % max_dots) + 1
+  g.shadow_text(64, 56, g.dots(lagged), 3, 'center')
+  g.shadow_text(64, 58, g.dots(g.lag_pos), 15, 'center')
+
+  g.lag_pos = g.lag_pos % max_dots + 1
 end
 
 return g

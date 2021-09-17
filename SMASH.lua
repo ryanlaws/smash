@@ -26,17 +26,8 @@ img_idx = 0
 sharpness = 0.5 -- should maybe be a param
 meta = false
 
--- TODO
--- PRIORITY
--- - make filter work as a kick drum 
--- - chill out HACK (more karplus, more lag, more feedback, less echo)
+-- LATER 
 -- - implement tick length
--- - make sure params are complete & look OK
--- - gfx
--- - - reso
--- - - hack
--- - - lag
--- NOT PRIORITY (after UI done maybe
 -- - do that rhythm trigger thing wm wanted I guess
 -- - overdub
 -- - crow (env? trig? gate?)
@@ -48,7 +39,6 @@ function init()
 
   cfg.init()
   seq.init()
-  -- print(norns.state.script)
 end
 
 function cleanup()
