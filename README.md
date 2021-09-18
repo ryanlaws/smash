@@ -2,6 +2,8 @@
 
 ## Sequencer for apes 🍌
 
+![SMASH](smash.gif)
+
 Two-button stereo LPG / sequencer with extras
 
 # 🙉🙉🙉WARNING!🙉🙉🙉
