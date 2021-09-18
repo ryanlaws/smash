@@ -1,4 +1,4 @@
-local FN = include('SMASH/lib/function') 
+local FN = include('smash/lib/function') 
 
 local g = {
   leaks = {},
