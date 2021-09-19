@@ -1,5 +1,3 @@
-local FN = include('smash/lib/function') 
-
 local g = {
   leaks = {},
   ripples = {},

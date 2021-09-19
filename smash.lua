@@ -10,11 +10,10 @@
 lattice = require('lattice')
 tabutil = require('tabutil')
 
--- might be cool to require() these but that caches until restart :|
-FN = include('smash/lib/function') 
-GFX = include('smash/lib/gfx')
-seq = include('smash/lib/seq') 
-cfg = include('smash/lib/config') 
+FN = include('lib/function')
+GFX = include('lib/gfx')
+seq = include('lib/seq')
+cfg = include('lib/config')
 
 engine.name = "StereoLpg"
 
