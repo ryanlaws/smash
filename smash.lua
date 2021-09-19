@@ -1,8 +1,8 @@
---    * **  S  M  A  S  H  ** * 
+--    * **  S  M  A  S  H  ** *
 --     stereo LPG + sequencer
 --  fun for primates of all ages
 --
--- K2 = SMASH ..........................................  
+-- K2 = SMASH ..........................................
 -- ................................ K3 = arm/play
 -- E2 = sharpness ..............................
 -- ....................................... E3 = tempo
@@ -25,7 +25,7 @@ img_idx = 0
 sharpness = 0.5 -- should maybe be a param
 meta = false
 
--- LATER 
+-- LATER
 -- - implement tick length
 -- - do that rhythm trigger thing wm wanted I guess
 -- - overdub
@@ -45,14 +45,14 @@ function cleanup()
 end
 
 function redraw()
-  GFX.redraw(sharpness, seq, meta, 
-    { cfg.e2options, cfg.e3options }, 
+  GFX.redraw(sharpness, seq, meta,
+    { cfg.e2options, cfg.e3options },
     params:get("smash_e2"), params:get("smash_e3"))
 
   -- infinitedigits capture technique
   -- (use ffmpeg to collate frames into GIF
   if capturing then
-    _norns.screen_export_png(string.format("/dev/shm/image%04d.png",img_idx)) 
+    _norns.screen_export_png(string.format("/dev/shm/image%04d.png",img_idx))
     img_idx=img_idx+1
   end
 end
@@ -82,7 +82,7 @@ function strike_engine(ctrl, value, from_seq)
     engine.hack(value)
   end
 
-  engine.strike(1) 
+  engine.strike(1)
 end
 
 
@@ -191,20 +191,20 @@ function key(k, z)
   if k == 1 then
     meta = z == 1 and true or false
     print('meta '..(meta and 'true' or 'false')) -- lol this feels wrong
-  elseif z ~= 1 then 
-    return 
+  elseif z ~= 1 then
+    return
   end
 
-  if k == 2 then 
+  if k == 2 then
     if meta then
     else
       local ctrl = cfg.e2options[params:get('smash_e2')]
       events.strike.pub(ctrl, ctrl_value(ctrl), from_seq)
-      if seq.armed and not seq.recording then 
-        seq.start_recording() 
+      if seq.armed and not seq.recording then
+        seq.start_recording()
       end
-      if seq.recording then 
-        seq.record_event(ctrl, ctrl_value(ctrl)) 
+      if seq.recording then
+        seq.record_event(ctrl, ctrl_value(ctrl))
       end
     end
   elseif k == 3 then

@@ -2,7 +2,7 @@ local fn = {}
 
 function fn.noop() end
 
-function fn.param_value(x) 
+function fn.param_value(x)
   return x:get()
 end
 
@@ -36,14 +36,14 @@ function fn.make_pub(name)
   function p.sub(fn)
     if name then print('new subscription to '..name) end
     p.subs[#p.subs+1] = fn
-    local id = #p.subs 
+    local id = #p.subs
     return id
   end
 
   function p.unsub(id)
     if name then print('unsubscribing id '..id..' from '..name) end
-    if id > #p.subs then 
-      return false 
+    if id > #p.subs then
+      return false
     end
 
     p.subs[id] = fn.noop
@@ -61,7 +61,7 @@ function fn.make_pub(name)
     if name then print('clearing subscribers for '..name) end
     p.subs = {}
   end
-  
+
   if name then print('created publisher '..name) end
 
   return p

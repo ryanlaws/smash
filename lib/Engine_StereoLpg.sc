@@ -12,7 +12,7 @@ Engine_StereoLpg : CroneEngine {
     context.server.sync;
 
     synth = { | t_strike=0, sharpness=1, side=0,
-      leak=0.001, noise=0.001, hum=50, gain=1.05, 
+      leak=0.001, noise=0.001, hum=50, gain=1.05,
       resonance=0.1, lag=0.1, hack=0|
       var ears = SoundIn.ar([0, 1]);
       var sides = [
@@ -43,7 +43,7 @@ Engine_StereoLpg : CroneEngine {
       side = side.max(-1).min(1).round + 1;
       side = Select.ar(side, sides);
 
-      noise = Mix.ar(LFSaw.ar([hum, hum + 0.05], 0, noise/12))!2 + 
+      noise = Mix.ar(LFSaw.ar([hum, hum + 0.05], 0, noise/12))!2 +
         WhiteNoise.ar(noise/3*2!2);
 
       phasor = Phasor.ar(0, 0.1 / hack.max(0.00001), 0, 480);

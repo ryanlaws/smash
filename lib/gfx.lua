@@ -13,7 +13,7 @@ local g = {
   hack_counter = 0
 }
 
--- some methods stolen/adapted from 
+-- some methods stolen/adapted from
 -- northern-information/athenaeum/lib/graphics.lua
 
 -- | helpers | --
@@ -30,15 +30,15 @@ end
 
 function g.shadow_text(x, y, s, l, pos)
   if not s or s == '' then return end
-  local t = (pos == 'right') and screen.text_right 
-    or (pos == 'center') and screen.text_center 
+  local t = (pos == 'right') and screen.text_right
+    or (pos == 'center') and screen.text_center
     or screen.text
 
   -- shadow
   screen.level(0)
   screen.move(x - 1, y) t(s)
   screen.move(x + 1, y) t(s)
-  screen.move(x, y - 1) t(s)                
+  screen.move(x, y - 1) t(s)
   screen.move(x, y + 1) t(s)
   screen.stroke()
 
@@ -51,7 +51,7 @@ end
 function g.circle(x, y, r, l, filled)
   screen.level(math.floor(l) or 15)
   screen.circle(x, y, r)
-  if filled then 
+  if filled then
     screen.fill()
   else
     screen.stroke()
@@ -59,8 +59,8 @@ function g.circle(x, y, r, l, filled)
 end
 
 function g.safe_level(l)
-  screen.level(type(l) == 'number' and 
-    math.min(math.max(math.floor(l), 0), 15) or 
+  screen.level(type(l) == 'number' and
+    math.min(math.max(math.floor(l), 0), 15) or
     15)
 end
 
@@ -80,7 +80,7 @@ function g.dots(size) -- more a string helper really
 end
 
 
--- | main loop | -- 
+-- | main loop | --
 function g.redraw(sharpness, seq, meta, menu_items, e2option, e3option)
   -- params is global. feels a little dirty
   -- I think params is an OK global tho
@@ -91,7 +91,7 @@ function g.redraw(sharpness, seq, meta, menu_items, e2option, e3option)
   local hack = params:get("smash_hack")
 
   screen.clear()
-  
+
   g.draw_noise()
   g.draw_gain()
   g.draw_leak(leak)
@@ -117,16 +117,16 @@ function g.redraw(sharpness, seq, meta, menu_items, e2option, e3option)
 end
 
 
--- | components | -- 
+-- | components | --
 function g.draw_strikes(side)
-  if g.strike_sharpness == nil then 
-    return 
+  if g.strike_sharpness == nil then
+    return
   end
 
   g.draw_ears(g.strike_sharpness, g.strike_level, side)
 
   g.strike_level = math.floor(g.strike_level * ((1 - g.strike_sharpness) ^ 3))
-  if g.strike_level < 1 then 
+  if g.strike_level < 1 then
     g.strike_sharpness = nil
   end
 end
@@ -141,7 +141,7 @@ end
 
 function g.draw_ears(sharpness, level, side)
   sharpness = math.floor(sharpness * 10)
-  radius = math.ceil((sharpness ^ 2) / 3.8) 
+  radius = math.ceil((sharpness ^ 2) / 3.8)
 
   l_open = side < 3
   r_open = side > 1
@@ -283,7 +283,7 @@ function g.add_new_leak()
   }
 end
 
--- collapse values from 0.001 - 1 to scaled random boolean 
+-- collapse values from 0.001 - 1 to scaled random boolean
 function g.chance(x)
   x = x ^ (1/6)
   x = math.floor(x // 0.01)
@@ -359,27 +359,27 @@ function g.strike(ctrl, value, from_seq)
   end
 end
 
-function g.draw_menu(meta, menu_items, e2option, e3option) 
+function g.draw_menu(meta, menu_items, e2option, e3option)
   if not meta then
-    if g.menu_level == 0 then 
-      return 
+    if g.menu_level == 0 then
+      return
     else
-      g.menu_level = math.max(g.menu_level - 1, 0) 
+      g.menu_level = math.max(g.menu_level - 1, 0)
     end
   elseif meta and g.menu_level < 5 then
-    g.menu_level = math.min(g.menu_level + 2, 5) 
+    g.menu_level = math.min(g.menu_level + 2, 5)
   end
 
   screen.font_face(1)
   screen.font_size(8)
 
   for i = 1, #menu_items[1] do
-    g.shadow_text(4, 8 * (i - 1) + 8, menu_items[1][i], 
+    g.shadow_text(4, 8 * (i - 1) + 8, menu_items[1][i],
       (i == e2option) and 15 or 4 * g.menu_level / 5)
   end
 
   for i = 1, #menu_items[2] do
-    g.shadow_text(124, 8 * (i - 1) + 8, menu_items[2][i], 
+    g.shadow_text(124, 8 * (i - 1) + 8, menu_items[2][i],
       (i == e3option) and 15 or 4 * g.menu_level / 5, 'right')
   end
 end
